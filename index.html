@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Mi Negocio PRO - MILO</title>
+
+<!-- MANIFEST (IMPORTANTE) -->
+<link rel="manifest" href="manifest.json">
+
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+body{margin:0;font-family:Arial;background:#f5f6fa;}
+.layout{display:flex;height:100vh;}
+
+.sidebar{
+width:230px;background:#fff;padding:15px;border-right:1px solid #ddd;
+display:flex;flex-direction:column;justify-content:space-between;
+}
+
+.sidebar button{
+width:100%;padding:12px;margin:5px 0;border:none;
+background:#f1f2f6;border-radius:10px;cursor:pointer;font-weight:bold;
+}
+
+.footer{
+text-align:center;font-size:12px;color:#888;margin-top:20px;
+}
+
+.content{flex:1;padding:20px;overflow:auto;}
+
+.card{
+background:white;padding:15px;border-radius:15px;
+box-shadow:0 3px 8px rgba(0,0,0,0.1);margin-bottom:15px;
+}
+
+.topcards{display:flex;gap:15px;}
+.topcards .card{flex:1;text-align:center;}
+
+.grid{
+display:grid;
+grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+gap:15px;
+}
+
+.product{
+background:white;padding:10px;border-radius:15px;text-align:center;
+box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+
+img{width:90px;height:90px;object-fit:cover;border-radius:12px;}
+
+button{padding:6px;border:none;border-radius:8px;cursor:pointer;}
+.btn-blue{background:#3498db;color:white;}
+.btn-green{background:#2ecc71;color:white;}
+.btn-red{background:#e74c3c;color:white;}
+
+table{width:100%;border-collapse:collapse;}
+th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;}
+
+input{
+padding:10px;border-radius:10px;border:1px solid #ccc;margin:5px;
+}
+
+.login{max-width:300px;margin:100px auto;}
+</style>
+</head>
+
+<body>
+
+<div class="layout">
+
+<div class="sidebar">
+<div>
+<h2>💼 Mi Negocio</h2>
+<button onclick="mostrar('dashboard')">📊 Dashboard</button>
+<button onclick="mostrar('vender')">💰 Vender</button>
+<button onclick="mostrar('inventario')">📦 Inventario</button>
+<button onclick="logout()">🚪 Cerrar sesión</button>
+</div>
+
+<div class="footer">
+👑 creador MILO
+</div>
+</div>
+
+<div class="content">
+
+<div id="login" class="login card">
+<input id="email" placeholder="Correo"><br>
+<input id="password" placeholder="Contraseña"><br>
+<button onclick="registrar()">Registrarse</button>
+<button onclick="loginUser()">Entrar</button>
+</div>
+
+<div id="app" style="display:none;">
+
+<div id="dashboard">
+<div class="topcards">
+<div class="card"><h3>Balance</h3><p id="balance">0</p></div>
+<div class="card"><h3>Ventas</h3><p id="ventas">0</p></div>
+<div class="card"><h3>Gastos</h3><p id="gastos">0</p></div>
+</div>
+</div>
+
+<div id="vender" style="display:none;">
+<div class="card">
+<input id="buscar" placeholder="Buscar producto..." oninput="filtrar()">
+</div>
+<div class="grid" id="productosVenta"></div>
+</div>
+
+<div id="inventario" style="display:none;">
+
+<div class="card">
+<h3>Agregar producto</h3>
+<input id="producto" placeholder="Nombre">
+<input id="cantidad" type="number" placeholder="Cantidad">
+<input id="compra" type="number" placeholder="Precio compra">
+<input id="venta" type="number" placeholder="Precio venta">
+<input type="file" id="imagen">
+<button onclick="agregar()">Agregar</button>
+</div>
+
+<div class="card">
+<button onclick="generarPDF()">📄 Descargar Catálogo</button>
+
+<table>
+<tr>
+<th>Producto</th>
+<th>Compra</th>
+<th>Venta</th>
+<th>Stock</th>
+<th>Acciones</th>
+</tr>
+<tbody id="tabla"></tbody>
+</table>
+</div>
+
+</div>
+
+</div>
+</div>
+</div>
+
+<script>
+const firebaseConfig={
+apiKey:"AIzaSyDA0CoWdCAYTLEwgfBcyX6SHr5bwEf4tJc",
+authDomain:"inventario-6562e.firebaseapp.com",
+projectId:"inventario-6562e"
+};
+firebase.initializeApp(firebaseConfig);
+
+const db=firebase.firestore();
+const auth=firebase.auth();
+
+function loginUser(){
+auth.signInWithEmailAndPassword(email.value,password.value)
+.then(()=>{
+login.style.display="none";
+app.style.display="block";
+cargar();
+});
+}
+
+function registrar(){
+auth.createUserWithEmailAndPassword(email.value,password.value);
+}
+
+function logout(){
+auth.signOut().then(()=>{
+app.style.display="none";
+login.style.display="block";
+});
+}
+
+function mostrar(id){
+dashboard.style.display="none";
+vender.style.display="none";
+inventario.style.display="none";
+document.getElementById(id).style.display="block";
+}
+
+function convertirBase64(file){
+return new Promise((resolve,reject)=>{
+const reader=new FileReader();
+reader.readAsDataURL(file);
+reader.onload=()=>resolve(reader.result);
+reader.onerror=error=>reject(error);
+});
+}
+
+async function agregar(){
+let file=document.getElementById("imagen").files[0];
+let imgBase64="";
+
+if(file){
+imgBase64=await convertirBase64(file);
+}
+
+db.collection("productos").add({
+nombre:producto.value,
+cantidad:Number(cantidad.value)||0,
+compra:Number(compra.value)||0,
+venta:Number(venta.value)||0,
+imagen:imgBase64
+});
+
+cargar();
+}
+
+function cargar(){
+db.collection("productos").get().then(snap=>{
+productosVenta.innerHTML="";
+tabla.innerHTML="";
+
+snap.forEach(doc=>{
+let d=doc.data();
+
+productosVenta.innerHTML+=`
+<div class="product">
+<img src="${d.imagen||'https://via.placeholder.com/100'}"><br>
+<b>${d.nombre}</b><br>
+S/ ${d.venta}<br>
+Stock: ${d.cantidad}<br>
+<button class="btn-green" onclick="venderProducto('${doc.id}',${d.venta})">Vender</button>
+</div>
+`;
+
+tabla.innerHTML+=`
+<tr>
+<td>${d.nombre}</td>
+<td>S/ ${d.compra}</td>
+<td>S/ ${d.venta}</td>
+<td>${d.cantidad}</td>
+<td>
+<button class="btn-blue" onclick="comprar('${doc.id}',${d.compra})">+</button>
+<button class="btn-red" onclick="eliminar('${doc.id}')">X</button>
+</td>
+</tr>
+`;
+});
+
+resumen();
+});
+}
+
+function venderProducto(id,venta){
+db.collection("productos").doc(id).get().then(doc=>{
+let d=doc.data();
+
+if(d.cantidad>0){
+db.collection("productos").doc(id).update({
+cantidad:d.cantidad-1
+});
+
+db.collection("movimientos").add({
+tipo:"venta",
+monto:venta
+});
+
+cargar();
+}
+});
+}
+
+function comprar(id,precio){
+let cant=Number(prompt("Cantidad"))||0;
+
+db.collection("productos").doc(id).get().then(doc=>{
+let d=doc.data();
+
+db.collection("productos").doc(id).update({
+cantidad:d.cantidad+cant
+});
+
+db.collection("movimientos").add({
+tipo:"gasto",
+monto:precio*cant
+});
+
+cargar();
+});
+}
+
+function eliminar(id){
+db.collection("productos").doc(id).delete();
+cargar();
+}
+
+function resumen(){
+db.collection("movimientos").get().then(snap=>{
+let ventasTotal=0;
+let gastosTotal=0;
+
+snap.forEach(doc=>{
+let d=doc.data();
+
+if(d.tipo==="venta"){
+ventasTotal += Number(d.monto)||0;
+}else{
+gastosTotal += Number(d.monto)||0;
+}
+});
+
+ventas.innerText="S/ "+ventasTotal;
+gastos.innerText="S/ "+gastosTotal;
+balance.innerText="S/ "+(ventasTotal-gastosTotal);
+});
+}
+
+function filtrar(){
+let texto=buscar.value.toLowerCase();
+
+db.collection("productos").get().then(snap=>{
+productosVenta.innerHTML="";
+
+snap.forEach(doc=>{
+let d=doc.data();
+
+if(d.nombre.toLowerCase().includes(texto)){
+productosVenta.innerHTML+=`
+<div class="product">
+<img src="${d.imagen||'https://via.placeholder.com/100'}"><br>
+<b>${d.nombre}</b><br>
+S/ ${d.venta}<br>
+Stock: ${d.cantidad}<br>
+<button class="btn-green" onclick="venderProducto('${doc.id}',${d.venta})">Vender</button>
+</div>
+`;
+}
+});
+});
+}
+
+async function generarPDF(){
+const { jsPDF } = window.jspdf;
+const doc = new jsPDF();
+
+let y=10;
+doc.text("CATÁLOGO MILO",20,y);
+y+=10;
+
+let productos=await db.collection("productos").get();
+
+for(const item of productos.docs){
+let d=item.data();
+
+doc.text(d.nombre,10,y);
+y+=6;
+
+doc.text("S/ "+d.venta,10,y);
+y+=6;
+
+if(d.imagen){
+try{
+doc.addImage(d.imagen,"JPEG",10,y,40,40);
+y+=45;
+}catch{}
+}
+
+if(y>260){
+doc.addPage();
+y=10;
+}
+}
+
+doc.save("catalogo_MILO.pdf");
+}
+</script>
+
+</body>
+</html>
