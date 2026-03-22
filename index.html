@@ -23,19 +23,19 @@ display:flex;flex-direction:column;justify-content:space-between;
 
 .sidebar button{
 width:100%;padding:12px;margin:5px 0;border:none;
-background:#f1f2f6;border-radius:10px;cursor:pointer;font-weight:bold;
+background:#f1f2f6;border-radius:10px;font-weight:bold;
 }
 
-.footer{text-align:center;font-size:12px;color:#888;margin-top:20px;}
-.content{flex:1;padding:20px;overflow:auto;}
+.footer{text-align:center;font-size:12px;color:#888;}
+.content{flex:1;padding:15px;overflow:auto;}
 
 .card{
-background:white;padding:15px;border-radius:15px;
-box-shadow:0 3px 8px rgba(0,0,0,0.1);margin-bottom:15px;
+background:white;padding:12px;border-radius:15px;
+box-shadow:0 3px 8px rgba(0,0,0,0.1);margin-bottom:10px;
 }
 
-.topcards{display:flex;gap:10px;flex-wrap:wrap;}
-.topcards .card{flex:1;min-width:100px;text-align:center;}
+.topcards{display:flex;gap:10px;}
+.topcards .card{flex:1;text-align:center;}
 
 .grid{
 display:grid;
@@ -48,51 +48,45 @@ background:white;padding:10px;border-radius:15px;text-align:center;
 box-shadow:0 2px 6px rgba(0,0,0,0.1);
 }
 
-img{width:80px;height:80px;object-fit:cover;border-radius:12px;}
+img{width:80px;height:80px;border-radius:10px;}
 
-button{padding:6px;border:none;border-radius:8px;cursor:pointer;}
-.btn-blue{background:#3498db;color:white;}
-.btn-green{background:#2ecc71;color:white;}
-.btn-red{background:#e74c3c;color:white;}
-
-table{width:100%;border-collapse:collapse;font-size:12px;}
-th,td{padding:6px;border-bottom:1px solid #eee;text-align:left;}
-
-input{
-padding:8px;border-radius:10px;border:1px solid #ccc;margin:5px;
-width:95%;
+.bottom-nav{
+display:none;
 }
 
-.login{max-width:300px;margin:100px auto;}
-
-/* 📱 CELULAR */
 @media (max-width:768px){
 
 .layout{flex-direction:column;}
 
-.sidebar{
+.sidebar{display:none;}
+
+.bottom-nav{
+display:flex;
 position:fixed;
 bottom:0;
 left:0;
 width:100%;
-height:60px;
-flex-direction:row;
-align-items:center;
-justify-content:space-around;
+height:70px;
+background:#fff;
 border-top:1px solid #ddd;
+justify-content:space-around;
+align-items:center;
 z-index:1000;
 }
 
-.sidebar h2,.footer{display:none;}
-
-.sidebar button{
-margin:0;
-padding:8px;
+.bottom-nav button{
+flex:1;
+height:100%;
+border:none;
+background:none;
 font-size:12px;
+display:flex;
+flex-direction:column;
+align-items:center;
+justify-content:center;
 }
 
-.content{padding-bottom:80px;}
-
+.content{padding-bottom:90px;}
 }
 </style>
 </head>
@@ -104,17 +98,17 @@ font-size:12px;
 <div class="sidebar">
 <div>
 <h2>💼 Mi Negocio</h2>
-<button onclick="mostrar('dashboard')">📊</button>
-<button onclick="mostrar('vender')">💰</button>
-<button onclick="mostrar('inventario')">📦</button>
-<button onclick="logout()">🚪</button>
+<button onclick="mostrar('dashboard')">Dashboard</button>
+<button onclick="mostrar('vender')">Vender</button>
+<button onclick="mostrar('inventario')">Inventario</button>
+<button onclick="logout()">Salir</button>
 </div>
 <div class="footer">👑 MILO</div>
 </div>
 
 <div class="content">
 
-<div id="login" class="login card">
+<div id="login" class="card">
 <input id="email" placeholder="Correo"><br>
 <input id="password" placeholder="Contraseña"><br>
 <button onclick="registrar()">Registrarse</button>
@@ -132,39 +126,33 @@ font-size:12px;
 </div>
 
 <div id="vender" style="display:none;">
-<div class="card">
 <input id="buscar" placeholder="Buscar..." oninput="filtrar()">
-</div>
 <div class="grid" id="productosVenta"></div>
 </div>
 
 <div id="inventario" style="display:none;">
-
-<div class="card">
-<h3>Agregar</h3>
 <input id="producto" placeholder="Nombre">
 <input id="cantidad" type="number" placeholder="Cantidad">
 <input id="compra" type="number" placeholder="Compra">
 <input id="venta" type="number" placeholder="Venta">
 <input type="file" id="imagen">
 <button onclick="agregar()">Agregar</button>
-</div>
-
-<div class="card">
-<button onclick="generarPDF()">📄 Catálogo</button>
 
 <table>
-<tr>
-<th>Producto</th><th>C</th><th>V</th><th>Stock</th><th></th>
-</tr>
 <tbody id="tabla"></tbody>
 </table>
 </div>
 
 </div>
+</div>
+</div>
 
-</div>
-</div>
+<!-- 🔥 MENÚ ABAJO -->
+<div class="bottom-nav">
+<button onclick="mostrar('dashboard')">📊<br>Inicio</button>
+<button onclick="mostrar('vender')">💰<br>Vender</button>
+<button onclick="mostrar('inventario')">📦<br>Stock</button>
+<button onclick="logout()">🚪<br>Salir</button>
 </div>
 
 <script>
@@ -206,16 +194,15 @@ document.getElementById(id).style.display="block";
 }
 
 function convertirBase64(file){
-return new Promise((resolve,reject)=>{
+return new Promise((res,rej)=>{
 const reader=new FileReader();
 reader.readAsDataURL(file);
-reader.onload=()=>resolve(reader.result);
-reader.onerror=error=>reject(error);
+reader.onload=()=>res(reader.result);
 });
 }
 
 async function agregar(){
-let file=document.getElementById("imagen").files[0];
+let file=imagen.files[0];
 let img="";
 if(file){img=await convertirBase64(file);}
 
@@ -233,33 +220,24 @@ function cargar(){
 db.collection("productos").get().then(snap=>{
 productosVenta.innerHTML="";
 tabla.innerHTML="";
-
 snap.forEach(doc=>{
 let d=doc.data();
 
 productosVenta.innerHTML+=`
 <div class="product">
 <img src="${d.imagen||'https://via.placeholder.com/100'}"><br>
-<b>${d.nombre}</b><br>
+${d.nombre}<br>
 S/ ${d.venta}<br>
-Stock: ${d.cantidad}<br>
-<button class="btn-green" onclick="venderProducto('${doc.id}',${d.venta})">Vender</button>
+<button onclick="venderProducto('${doc.id}',${d.venta})">Vender</button>
 </div>`;
 
 tabla.innerHTML+=`
 <tr>
 <td>${d.nombre}</td>
-<td>${d.compra}</td>
-<td>${d.venta}</td>
 <td>${d.cantidad}</td>
-<td>
-<button onclick="comprar('${doc.id}',${d.compra})">+</button>
-<button onclick="eliminar('${doc.id}')">X</button>
-</td>
+<td><button onclick="comprar('${doc.id}',${d.compra})">+</button></td>
 </tr>`;
 });
-
-resumen();
 });
 }
 
@@ -275,77 +253,16 @@ cargar();
 }
 
 function comprar(id,precio){
-let cant=Number(prompt("Cantidad"))||0;
+let c=Number(prompt("Cantidad"));
 db.collection("productos").doc(id).get().then(doc=>{
 let d=doc.data();
-db.collection("productos").doc(id).update({cantidad:d.cantidad+cant});
-db.collection("movimientos").add({tipo:"gasto",monto:precio*cant});
+db.collection("productos").doc(id).update({cantidad:d.cantidad+c});
 cargar();
 });
 }
 
-function eliminar(id){
-db.collection("productos").doc(id).delete();
-cargar();
-}
-
-function resumen(){
-db.collection("movimientos").get().then(snap=>{
-let v=0,g=0;
-snap.forEach(doc=>{
-let d=doc.data();
-if(d.tipo==="venta"){v+=Number(d.monto)||0;}
-else{g+=Number(d.monto)||0;}
-});
-ventas.innerText="S/ "+v;
-gastos.innerText="S/ "+g;
-balance.innerText="S/ "+(v-g);
-});
-}
-
-function filtrar(){
-let t=buscar.value.toLowerCase();
-db.collection("productos").get().then(snap=>{
-productosVenta.innerHTML="";
-snap.forEach(doc=>{
-let d=doc.data();
-if(d.nombre.toLowerCase().includes(t)){
-productosVenta.innerHTML+=`
-<div class="product">
-<img src="${d.imagen||'https://via.placeholder.com/100'}"><br>
-<b>${d.nombre}</b><br>
-S/ ${d.venta}<br>
-<button onclick="venderProducto('${doc.id}',${d.venta})">Vender</button>
-</div>`;
-}
-});
-});
-}
-
-async function generarPDF(){
-const { jsPDF } = window.jspdf;
-const doc = new jsPDF();
-let y=10;
-doc.text("CATALOGO MILO",20,y);
-y+=10;
-
-let productos=await db.collection("productos").get();
-for(const item of productos.docs){
-let d=item.data();
-doc.text(d.nombre,10,y); y+=6;
-doc.text("S/ "+d.venta,10,y); y+=6;
-
-if(d.imagen){
-try{doc.addImage(d.imagen,"JPEG",10,y,40,40);y+=45;}catch{}
-}
-
-if(y>260){doc.addPage();y=10;}
-}
-doc.save("catalogo.pdf");
-}
-
-// SERVICE WORKER
-if ("serviceWorker" in navigator) {
+// SW
+if("serviceWorker" in navigator){
 navigator.serviceWorker.register("service-worker.js");
 }
 </script>
