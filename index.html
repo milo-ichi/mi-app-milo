@@ -13,10 +13,32 @@
 
 <style>
 body{margin:0;font-family:Arial;background:#f5f6fa;}
-.layout{display:flex;height:100vh;}
 
-.sidebar{width:220px;background:#fff;padding:15px;border-right:1px solid #ddd;}
-.content{flex:1;padding:15px;overflow:auto;}
+h2{font-size:22px;}
+h3{font-size:18px;}
+
+input{
+width:95%;
+padding:10px;
+margin:5px;
+border-radius:10px;
+border:1px solid #ccc;
+font-size:16px;
+}
+
+button{
+padding:10px;
+border:none;
+border-radius:10px;
+margin:5px;
+font-size:14px;
+}
+
+.grid{
+display:grid;
+grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+gap:10px;
+}
 
 .product{
 background:#fff;
@@ -26,24 +48,9 @@ box-shadow:0 2px 6px rgba(0,0,0,0.1);
 text-align:center;
 }
 
-.grid{
-display:grid;
-grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
-gap:10px;
-}
-
 img{width:80px;height:80px;border-radius:10px;}
 
 .bottom-nav{
-display:none;
-}
-
-@media(max-width:768px){
-
-.sidebar{display:none;}
-
-.bottom-nav{
-display:flex;
 position:fixed;
 bottom:0;
 left:0;
@@ -51,103 +58,104 @@ width:100%;
 height:70px;
 background:#fff;
 border-top:1px solid #ddd;
+display:flex;
 justify-content:space-around;
 align-items:center;
 }
 
 .bottom-nav button{
 flex:1;
-height:100%;
-border:none;
 background:none;
-display:flex;
-flex-direction:column;
-justify-content:center;
-align-items:center;
 }
 
-.content{padding-bottom:80px;}
-}
+.content{padding:15px;padding-bottom:90px;}
 </style>
 </head>
 
 <body>
 
-<div class="layout">
-
-<div class="sidebar">
-<h2>💼 MILO</h2>
-<button onclick="mostrar('dashboard')">Inicio</button>
-<button onclick="mostrar('vender')">Vender</button>
-<button onclick="mostrar('inventario')">Inventario</button>
-</div>
-
 <div class="content">
 
 <div id="login">
-<input id="email" placeholder="Correo"><br>
-<input id="password" placeholder="Contraseña"><br>
-<button onclick="loginUser()">Entrar</button>
+<h2>🔐 Iniciar sesión</h2>
+<input id="email" placeholder="Correo">
+<input id="password" placeholder="Contraseña" type="password">
+<button onclick="login()">Entrar</button>
+<button onclick="registrar()">Registrarse</button>
 </div>
 
 <div id="app" style="display:none;">
 
 <div id="dashboard">
-<h3>Panel</h3>
-<p id="balance">0</p>
+<h2>📊 Dashboard</h2>
+<p>💰 Ventas: <span id="ventas">0</span></p>
+<p>💸 Gastos: <span id="gastos">0</span></p>
+<p>📈 Ganancia: <span id="ganancia">0</span></p>
 </div>
 
 <div id="vender" style="display:none;">
+<h2>💰 Vender</h2>
 <input id="buscar" placeholder="Buscar..." oninput="filtrar()">
 <div class="grid" id="productosVenta"></div>
 </div>
 
 <div id="inventario" style="display:none;">
-<input id="producto" placeholder="Nombre">
+<h2>📦 Inventario</h2>
+
+<input id="producto" placeholder="Nombre producto">
 <input id="cantidad" type="number" placeholder="Cantidad">
 <input id="compra" type="number" placeholder="Precio compra">
 <input id="venta" type="number" placeholder="Precio venta">
 <input type="file" id="imagen">
-<button onclick="agregar()">Agregar</button>
+<button onclick="agregar()">Agregar producto</button>
 
-<div id="tabla"></div>
-</div>
-
-</div>
-</div>
+<div class="grid" id="tabla"></div>
 </div>
 
-<!-- MENU ABAJO -->
+</div>
+</div>
+
 <div class="bottom-nav">
-<button onclick="mostrar('dashboard')">📊 Inicio</button>
-<button onclick="mostrar('vender')">💰 Vender</button>
-<button onclick="mostrar('inventario')">📦 Stock</button>
-<button onclick="logout()">🚪 Salir</button>
+<button onclick="mostrar('dashboard')">📊</button>
+<button onclick="mostrar('vender')">💰</button>
+<button onclick="mostrar('inventario')">📦</button>
+<button onclick="logout()">🚪</button>
 </div>
 
 <script>
 const firebaseConfig={
-apiKey:"AIzaSy...",
+apiKey:"AIzaSyDA0CoWdCAYTLEwgfBcyX6SHr5bwEf4tJc",
 authDomain:"inventario-6562e.firebaseapp.com",
 projectId:"inventario-6562e"
 };
-firebase.initializeApp(firebaseConfig);
 
+firebase.initializeApp(firebaseConfig);
 const db=firebase.firestore();
 const auth=firebase.auth();
 
-function loginUser(){
-auth.signInWithEmailAndPassword(email.value,password.value)
-.then(()=>{
+auth.onAuthStateChanged(user=>{
+if(user){
 login.style.display="none";
 app.style.display="block";
 cargar();
+}else{
+login.style.display="block";
+app.style.display="none";
+}
 });
+
+function login(){
+auth.signInWithEmailAndPassword(email.value,password.value)
+.catch(e=>alert(e.message));
+}
+
+function registrar(){
+auth.createUserWithEmailAndPassword(email.value,password.value)
+.catch(e=>alert(e.message));
 }
 
 function logout(){
 auth.signOut();
-location.reload();
 }
 
 function mostrar(id){
@@ -159,9 +167,9 @@ document.getElementById(id).style.display="block";
 
 function convertirBase64(file){
 return new Promise(res=>{
-const r=new FileReader();
-r.readAsDataURL(file);
-r.onload=()=>res(r.result);
+const reader=new FileReader();
+reader.readAsDataURL(file);
+reader.onload=()=>res(reader.result);
 });
 }
 
@@ -172,9 +180,9 @@ if(file){img=await convertirBase64(file);}
 
 db.collection("productos").add({
 nombre:producto.value,
-cantidad:Number(cantidad.value),
-compra:Number(compra.value),
-venta:Number(venta.value),
+cantidad:Number(cantidad.value)||0,
+compra:Number(compra.value)||0,
+venta:Number(venta.value)||0,
 imagen:img
 });
 cargar();
@@ -192,8 +200,8 @@ productosVenta.innerHTML+=`
 <div class="product">
 <img src="${d.imagen||'https://via.placeholder.com/100'}"><br>
 <b>${d.nombre}</b><br>
-💰 Venta: S/ ${d.venta}<br>
-📦 Stock: ${d.cantidad}<br>
+💰 S/ ${d.venta}<br>
+📦 ${d.cantidad}<br>
 <button onclick="venderProducto('${doc.id}',${d.venta})">Vender</button>
 </div>`;
 
@@ -206,6 +214,8 @@ tabla.innerHTML+=`
 <button onclick="comprar('${doc.id}',${d.compra})">+ Comprar</button>
 </div>`;
 });
+
+calcular();
 });
 }
 
@@ -214,17 +224,36 @@ db.collection("productos").doc(id).get().then(doc=>{
 let d=doc.data();
 if(d.cantidad>0){
 db.collection("productos").doc(id).update({cantidad:d.cantidad-1});
+db.collection("movimientos").add({tipo:"venta",monto:venta});
 cargar();
 }
 });
 }
 
 function comprar(id,precio){
-let c=Number(prompt("Cantidad"));
+let c=Number(prompt("Cantidad"))||0;
 db.collection("productos").doc(id).get().then(doc=>{
 let d=doc.data();
 db.collection("productos").doc(id).update({cantidad:d.cantidad+c});
+db.collection("movimientos").add({tipo:"gasto",monto:precio*c});
 cargar();
+});
+}
+
+function calcular(){
+db.collection("movimientos").get().then(snap=>{
+let ventasT=0;
+let gastosT=0;
+
+snap.forEach(doc=>{
+let d=doc.data();
+if(d.tipo=="venta") ventasT+=Number(d.monto);
+else gastosT+=Number(d.monto);
+});
+
+ventas.innerText=ventasT;
+gastos.innerText=gastosT;
+ganancia.innerText=ventasT-gastosT;
 });
 }
 
