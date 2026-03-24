@@ -3,49 +3,33 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mi Negocio PRO - MILO</title>
+<title>MILO APP PRO</title>
 
 <link rel="manifest" href="manifest.json">
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
 body{margin:0;font-family:Arial;background:#f5f6fa;}
 .layout{display:flex;height:100vh;}
 
-.sidebar{
-width:230px;background:#fff;padding:15px;border-right:1px solid #ddd;
-display:flex;flex-direction:column;justify-content:space-between;
-}
-
-.sidebar button{
-width:100%;padding:12px;margin:5px 0;border:none;
-background:#f1f2f6;border-radius:10px;font-weight:bold;
-}
-
-.footer{text-align:center;font-size:12px;color:#888;}
+.sidebar{width:220px;background:#fff;padding:15px;border-right:1px solid #ddd;}
 .content{flex:1;padding:15px;overflow:auto;}
 
-.card{
-background:white;padding:12px;border-radius:15px;
-box-shadow:0 3px 8px rgba(0,0,0,0.1);margin-bottom:10px;
+.product{
+background:#fff;
+padding:10px;
+border-radius:12px;
+box-shadow:0 2px 6px rgba(0,0,0,0.1);
+text-align:center;
 }
-
-.topcards{display:flex;gap:10px;}
-.topcards .card{flex:1;text-align:center;}
 
 .grid{
 display:grid;
-grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
 gap:10px;
-}
-
-.product{
-background:white;padding:10px;border-radius:15px;text-align:center;
-box-shadow:0 2px 6px rgba(0,0,0,0.1);
 }
 
 img{width:80px;height:80px;border-radius:10px;}
@@ -54,9 +38,7 @@ img{width:80px;height:80px;border-radius:10px;}
 display:none;
 }
 
-@media (max-width:768px){
-
-.layout{flex-direction:column;}
+@media(max-width:768px){
 
 .sidebar{display:none;}
 
@@ -71,7 +53,6 @@ background:#fff;
 border-top:1px solid #ddd;
 justify-content:space-around;
 align-items:center;
-z-index:1000;
 }
 
 .bottom-nav button{
@@ -79,14 +60,13 @@ flex:1;
 height:100%;
 border:none;
 background:none;
-font-size:12px;
 display:flex;
 flex-direction:column;
-align-items:center;
 justify-content:center;
+align-items:center;
 }
 
-.content{padding-bottom:90px;}
+.content{padding-bottom:80px;}
 }
 </style>
 </head>
@@ -96,33 +76,25 @@ justify-content:center;
 <div class="layout">
 
 <div class="sidebar">
-<div>
-<h2>💼 Mi Negocio</h2>
-<button onclick="mostrar('dashboard')">Dashboard</button>
+<h2>💼 MILO</h2>
+<button onclick="mostrar('dashboard')">Inicio</button>
 <button onclick="mostrar('vender')">Vender</button>
 <button onclick="mostrar('inventario')">Inventario</button>
-<button onclick="logout()">Salir</button>
-</div>
-<div class="footer">👑 MILO</div>
 </div>
 
 <div class="content">
 
-<div id="login" class="card">
+<div id="login">
 <input id="email" placeholder="Correo"><br>
 <input id="password" placeholder="Contraseña"><br>
-<button onclick="registrar()">Registrarse</button>
 <button onclick="loginUser()">Entrar</button>
 </div>
 
 <div id="app" style="display:none;">
 
 <div id="dashboard">
-<div class="topcards">
-<div class="card"><h3>Balance</h3><p id="balance">0</p></div>
-<div class="card"><h3>Ventas</h3><p id="ventas">0</p></div>
-<div class="card"><h3>Gastos</h3><p id="gastos">0</p></div>
-</div>
+<h3>Panel</h3>
+<p id="balance">0</p>
 </div>
 
 <div id="vender" style="display:none;">
@@ -133,31 +105,29 @@ justify-content:center;
 <div id="inventario" style="display:none;">
 <input id="producto" placeholder="Nombre">
 <input id="cantidad" type="number" placeholder="Cantidad">
-<input id="compra" type="number" placeholder="Compra">
-<input id="venta" type="number" placeholder="Venta">
+<input id="compra" type="number" placeholder="Precio compra">
+<input id="venta" type="number" placeholder="Precio venta">
 <input type="file" id="imagen">
 <button onclick="agregar()">Agregar</button>
 
-<table>
-<tbody id="tabla"></tbody>
-</table>
+<div id="tabla"></div>
 </div>
 
 </div>
 </div>
 </div>
 
-<!-- 🔥 MENÚ ABAJO -->
+<!-- MENU ABAJO -->
 <div class="bottom-nav">
-<button onclick="mostrar('dashboard')">📊<br>Inicio</button>
-<button onclick="mostrar('vender')">💰<br>Vender</button>
-<button onclick="mostrar('inventario')">📦<br>Stock</button>
-<button onclick="logout()">🚪<br>Salir</button>
+<button onclick="mostrar('dashboard')">📊 Inicio</button>
+<button onclick="mostrar('vender')">💰 Vender</button>
+<button onclick="mostrar('inventario')">📦 Stock</button>
+<button onclick="logout()">🚪 Salir</button>
 </div>
 
 <script>
 const firebaseConfig={
-apiKey:"AIzaSyDA0CoWdCAYTLEwgfBcyX6SHr5bwEf4tJc",
+apiKey:"AIzaSy...",
 authDomain:"inventario-6562e.firebaseapp.com",
 projectId:"inventario-6562e"
 };
@@ -175,15 +145,9 @@ cargar();
 });
 }
 
-function registrar(){
-auth.createUserWithEmailAndPassword(email.value,password.value);
-}
-
 function logout(){
-auth.signOut().then(()=>{
-app.style.display="none";
-login.style.display="block";
-});
+auth.signOut();
+location.reload();
 }
 
 function mostrar(id){
@@ -194,10 +158,10 @@ document.getElementById(id).style.display="block";
 }
 
 function convertirBase64(file){
-return new Promise((res,rej)=>{
-const reader=new FileReader();
-reader.readAsDataURL(file);
-reader.onload=()=>res(reader.result);
+return new Promise(res=>{
+const r=new FileReader();
+r.readAsDataURL(file);
+r.onload=()=>res(r.result);
 });
 }
 
@@ -208,9 +172,9 @@ if(file){img=await convertirBase64(file);}
 
 db.collection("productos").add({
 nombre:producto.value,
-cantidad:Number(cantidad.value)||0,
-compra:Number(compra.value)||0,
-venta:Number(venta.value)||0,
+cantidad:Number(cantidad.value),
+compra:Number(compra.value),
+venta:Number(venta.value),
 imagen:img
 });
 cargar();
@@ -220,23 +184,27 @@ function cargar(){
 db.collection("productos").get().then(snap=>{
 productosVenta.innerHTML="";
 tabla.innerHTML="";
+
 snap.forEach(doc=>{
 let d=doc.data();
 
 productosVenta.innerHTML+=`
 <div class="product">
 <img src="${d.imagen||'https://via.placeholder.com/100'}"><br>
-${d.nombre}<br>
-S/ ${d.venta}<br>
+<b>${d.nombre}</b><br>
+💰 Venta: S/ ${d.venta}<br>
+📦 Stock: ${d.cantidad}<br>
 <button onclick="venderProducto('${doc.id}',${d.venta})">Vender</button>
 </div>`;
 
 tabla.innerHTML+=`
-<tr>
-<td>${d.nombre}</td>
-<td>${d.cantidad}</td>
-<td><button onclick="comprar('${doc.id}',${d.compra})">+</button></td>
-</tr>`;
+<div class="product">
+<b>${d.nombre}</b><br>
+💸 Compra: S/ ${d.compra}<br>
+💰 Venta: S/ ${d.venta}<br>
+📦 Stock: ${d.cantidad}<br>
+<button onclick="comprar('${doc.id}',${d.compra})">+ Comprar</button>
+</div>`;
 });
 });
 }
@@ -246,7 +214,6 @@ db.collection("productos").doc(id).get().then(doc=>{
 let d=doc.data();
 if(d.cantidad>0){
 db.collection("productos").doc(id).update({cantidad:d.cantidad-1});
-db.collection("movimientos").add({tipo:"venta",monto:venta});
 cargar();
 }
 });
@@ -261,7 +228,25 @@ cargar();
 });
 }
 
-// SW
+function filtrar(){
+let t=buscar.value.toLowerCase();
+db.collection("productos").get().then(snap=>{
+productosVenta.innerHTML="";
+snap.forEach(doc=>{
+let d=doc.data();
+if(d.nombre.toLowerCase().includes(t)){
+productosVenta.innerHTML+=`
+<div class="product">
+<b>${d.nombre}</b><br>
+💰 ${d.venta}<br>
+📦 ${d.cantidad}<br>
+<button onclick="venderProducto('${doc.id}',${d.venta})">Vender</button>
+</div>`;
+}
+});
+});
+}
+
 if("serviceWorker" in navigator){
 navigator.serviceWorker.register("service-worker.js");
 }
