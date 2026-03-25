@@ -10,29 +10,33 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-body{margin:0;font-family:Arial;background:#f5f6fa;}
+body{margin:0;font-family:Arial;background:#eef1f5;}
 
 h2{margin:5px;}
 
-input,button{
-padding:10px;margin:5px;border-radius:10px;border:none;
+input{
+padding:10px;margin:5px;border-radius:10px;border:1px solid #ddd;width:90%;
 }
 
-button{background:#4CAF50;color:white;}
+button{
+padding:10px;margin:5px;border:none;border-radius:10px;
+background:#4CAF50;color:white;
+}
 
 .grid{
 display:grid;
-grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
-gap:10px;
+grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+gap:12px;
 }
 
 .card{
 background:white;
-padding:10px;
-border-radius:12px;
-box-shadow:0 3px 8px rgba(0,0,0,0.1);
+padding:12px;
+border-radius:15px;
+box-shadow:0 4px 10px rgba(0,0,0,0.08);
 text-align:center;
 }
 
@@ -42,7 +46,6 @@ img{width:80px;height:80px;border-radius:10px;}
 position:fixed;bottom:0;width:100%;display:flex;background:white;
 border-top:1px solid #ccc;
 }
-
 .bottom-nav button{flex:1;background:none;}
 
 .content{padding:15px;padding-bottom:90px;}
@@ -68,23 +71,13 @@ border-top:1px solid #ccc;
 <h2>📊 Dashboard</h2>
 <p>Ventas: <span id="ventas">0</span></p>
 <p>Gastos: <span id="gastos">0</span></p>
-<p>Ganancia: <span id="ganancia">0</span></p>
+<p>Ganancia REAL: <span id="ganancia">0</span></p>
 
 <canvas id="grafico" height="120"></canvas>
 
+<button onclick="generarPDF()">📄 Descargar catálogo</button>
+
 <h3>👑 Creador MILO</h3>
-</div>
-
-<!-- HISTORIAL -->
-<div id="historial" style="display:none;">
-<h2>📜 Historial</h2>
-
-<button onclick="filtro='hoy';cargar()">Hoy</button>
-<button onclick="filtro='semana';cargar()">Semana</button>
-<button onclick="filtro='mes';cargar()">Mes</button>
-<button onclick="filtro='todo';cargar()">Todo</button>
-
-<div id="listaHistorial"></div>
 </div>
 
 <!-- CLIENTES -->
@@ -111,8 +104,8 @@ border-top:1px solid #ccc;
 
 <input id="producto" placeholder="Nombre">
 <input id="cantidad" type="number" placeholder="Cantidad">
-<input id="compra" type="number" placeholder="Compra">
-<input id="venta" type="number" placeholder="Venta">
+<input id="compra" type="number" placeholder="Precio compra">
+<input id="venta" type="number" placeholder="Precio venta">
 <input type="file" id="imagen">
 
 <button onclick="agregar()">Agregar</button>
@@ -127,7 +120,6 @@ border-top:1px solid #ccc;
 <button onclick="mostrar('dashboard')">📊</button>
 <button onclick="mostrar('vender')">💰</button>
 <button onclick="mostrar('inventario')">📦</button>
-<button onclick="mostrar('historial')">📜</button>
 <button onclick="mostrar('clientes')">👥</button>
 <button onclick="logout()">🚪</button>
 </div>
@@ -143,8 +135,6 @@ firebase.initializeApp(firebaseConfig);
 
 const db=firebase.firestore();
 const auth=firebase.auth();
-
-let filtro="todo";
 let chart=null;
 
 function login(){
@@ -170,7 +160,7 @@ location.reload();
 }
 
 function mostrar(id){
-["dashboard","vender","inventario","historial","clientes"].forEach(s=>{
+["dashboard","vender","inventario","clientes"].forEach(s=>{
 document.getElementById(s).style.display="none";
 });
 document.getElementById(id).style.display="block";
@@ -194,22 +184,33 @@ venta:Number(venta.value)||0,
 imagen:img
 });
 
-producto.value="";cantidad.value="";compra.value="";venta.value="";imagen.value="";
+alert("Producto agregado");
+
+producto.value="";
+cantidad.value="";
+compra.value="";
+venta.value="";
+imagen.value="";
+
 cargar();
 }
 
-function venderProducto(id,venta,nombre){
+function venderProducto(id,venta,nombre,compra){
 if(confirm("¿Confirmar venta?")){
 db.collection("productos").doc(id).get().then(doc=>{
 let d=doc.data();
+
 if(d.cantidad>0){
 db.collection("productos").doc(id).update({cantidad:d.cantidad-1});
+
 db.collection("movimientos").add({
 tipo:"venta",
-monto:Number(venta),
+monto:Number(venta)||0,
+ganancia:(Number(venta)||0)-(Number(compra)||0),
 fecha:Date.now(),
 nombre:nombre
 });
+
 cargar();
 }
 });
@@ -221,12 +222,17 @@ let c=Number(prompt("Cantidad"))||0;
 
 db.collection("productos").doc(id).get().then(doc=>{
 let d=doc.data();
-db.collection("productos").doc(id).update({cantidad:d.cantidad+c});
+
+db.collection("productos").doc(id).update({
+cantidad:d.cantidad+c
+});
+
 db.collection("movimientos").add({
 tipo:"gasto",
-monto:precio*c,
+monto:(Number(precio)||0)*c,
 fecha:Date.now()
 });
+
 cargar();
 });
 }
@@ -252,7 +258,7 @@ productosVenta.innerHTML+=`
 <b>${d.nombre}</b><br>
 S/ ${d.venta}<br>
 Stock: ${d.cantidad}<br>
-<button onclick="venderProducto('${doc.id}',${d.venta},'${d.nombre}')">Vender</button>
+<button onclick="venderProducto('${doc.id}',${d.venta},'${d.nombre}',${d.compra})">Vender</button>
 </div>`;
 
 tabla.innerHTML+=`
@@ -269,45 +275,24 @@ calcular();
 grafica();
 });
 
-db.collection("movimientos").get().then(snap=>{
-listaHistorial.innerHTML="";
-let total=0;
-let now=Date.now();
-
-snap.forEach(doc=>{
-let d=doc.data();
-let diff=now-(d.fecha||0);
-
-if(filtro=="hoy" && diff>86400000) return;
-if(filtro=="semana" && diff>604800000) return;
-if(filtro=="mes" && diff>2592000000) return;
-
-total+=Number(d.monto)||0;
-
-listaHistorial.innerHTML+=`
-<div class="card">
-${d.nombre||"Gasto"}<br>
-S/ ${d.monto}
-</div>`;
-});
-
-listaHistorial.innerHTML+="<h3>Total: "+total+"</h3>";
-});
-
 cargarClientes();
 }
 
 function calcular(){
 db.collection("movimientos").get().then(snap=>{
-let v=0,g=0;
+let v=0,g=0,gan=0;
+
 snap.forEach(doc=>{
 let d=doc.data();
-if(d.tipo=="venta") v+=Number(d.monto);
-else g+=Number(d.monto);
+
+v+=Number(d.monto)||0;
+if(d.tipo=="gasto") g+=Number(d.monto)||0;
+gan+=Number(d.ganancia)||0;
 });
+
 ventas.innerText=v;
 gastos.innerText=g;
-ganancia.innerText=v-g;
+ganancia.innerText=gan;
 });
 }
 
@@ -320,7 +305,7 @@ let d=doc.data();
 if(d.tipo!="venta") return;
 
 let fecha=new Date(d.fecha).toLocaleDateString();
-datos[fecha]=(datos[fecha]||0)+d.monto;
+datos[fecha]=(datos[fecha]||0)+Number(d.monto||0);
 });
 
 let labels=Object.keys(datos);
@@ -335,7 +320,7 @@ labels:labels,
 datasets:[{
 label:"Ventas",
 data:valores,
-borderWidth:2
+tension:0.4
 }]
 }
 });
@@ -358,7 +343,7 @@ productosVenta.innerHTML+=`
 <b>${d.nombre}</b><br>
 S/ ${d.venta}<br>
 Stock: ${d.cantidad}<br>
-<button onclick="venderProducto('${doc.id}',${d.venta},'${d.nombre}')">Vender</button>
+<button onclick="venderProducto('${doc.id}',${d.venta},'${d.nombre}',${d.compra})">Vender</button>
 </div>`;
 }
 });
@@ -376,6 +361,7 @@ cargarClientes();
 function cargarClientes(){
 db.collection("clientes").get().then(snap=>{
 listaClientes.innerHTML="";
+
 snap.forEach(doc=>{
 let d=doc.data();
 
@@ -394,6 +380,23 @@ if(confirm("¿Confirmar pago?")){
 db.collection("clientes").doc(id).delete();
 cargarClientes();
 }
+}
+
+function generarPDF(){
+const {jsPDF}=window.jspdf;
+let doc=new jsPDF();
+
+db.collection("productos").get().then(snap=>{
+let y=10;
+
+snap.forEach(d=>{
+let p=d.data();
+doc.text(p.nombre+" - S/ "+p.venta,10,y);
+y+=10;
+});
+
+doc.save("catalogo.pdf");
+});
 }
 </script>
 
