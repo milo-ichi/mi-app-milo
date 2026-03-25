@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>MILO APP PRO</title>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -62,22 +61,24 @@ background:none;
 
 <div class="content">
 
+<!-- LOGIN -->
 <div id="loginDiv">
-<h2>🔐 Login</h2>
+<h2>🔐 Iniciar sesión</h2>
 <input id="email" placeholder="Correo">
 <input id="password" type="password" placeholder="Contraseña">
 <button onclick="login()">Entrar</button>
 <button onclick="registrar()">Registrarse</button>
 </div>
 
+<!-- APP -->
 <div id="app" style="display:none;">
 
 <!-- DASHBOARD -->
 <div id="dashboard">
 <h2>📊 Dashboard</h2>
-<p>Ventas: <span id="ventas">0</span></p>
-<p>Gastos: <span id="gastos">0</span></p>
-<p>Ganancia: <span id="ganancia">0</span></p>
+<p>💰 Ventas: <span id="ventas">0</span></p>
+<p>💸 Gastos: <span id="gastos">0</span></p>
+<p>📈 Ganancia: <span id="ganancia">0</span></p>
 </div>
 
 <!-- HISTORIAL -->
@@ -122,6 +123,7 @@ background:none;
 </div>
 </div>
 
+<!-- MENU -->
 <div class="bottom-nav">
 <button onclick="mostrar('dashboard')">📊</button>
 <button onclick="mostrar('vender')">💰</button>
@@ -133,10 +135,11 @@ background:none;
 
 <script>
 const firebaseConfig={
-apiKey:"AIzaSy...",
+apiKey:"AIzaSyDA0CoWdCAYTLEwgfBcyX6SHr5bwEf4tJc",
 authDomain:"inventario-6562e.firebaseapp.com",
 projectId:"inventario-6562e"
 };
+
 firebase.initializeApp(firebaseConfig);
 
 const db=firebase.firestore();
@@ -150,11 +153,14 @@ auth.signInWithEmailAndPassword(email.value,password.value)
 loginDiv.style.display="none";
 app.style.display="block";
 cargar();
-});
+})
+.catch(e=>alert(e.message));
 }
 
 function registrar(){
-auth.createUserWithEmailAndPassword(email.value,password.value);
+auth.createUserWithEmailAndPassword(email.value,password.value)
+.then(()=>alert("Registrado"))
+.catch(e=>alert(e.message));
 }
 
 function logout(){
@@ -191,13 +197,17 @@ imagen:img
 
 alert("Producto agregado");
 
-producto.value="";cantidad.value="";compra.value="";venta.value="";imagen.value="";
+producto.value="";
+cantidad.value="";
+compra.value="";
+venta.value="";
+imagen.value="";
 
 cargar();
 }
 
 function venderProducto(id,venta,nombre){
-if(confirm("¿Vender producto?")){
+if(confirm("¿Confirmar venta?")){
 db.collection("productos").doc(id).get().then(doc=>{
 let d=doc.data();
 
@@ -290,6 +300,8 @@ ${d.fecha}
 
 listaHistorial.innerHTML+="<h3>Total: "+total+"</h3>";
 });
+
+cargarClientes();
 }
 
 function calcular(){
@@ -363,7 +375,6 @@ function pagar(id){
 db.collection("clientes").doc(id).delete();
 cargarClientes();
 }
-
 </script>
 
 </body>
