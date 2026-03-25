@@ -10,61 +10,30 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 
 <style>
-body{
-margin:0;
-font-family:Arial;
-background:#f0f2f5;
-}
-
+body{margin:0;font-family:Arial;background:#f5f6fa;}
 h2{font-size:22px;}
 
-input{
-padding:10px;
-margin:5px;
-border-radius:10px;
-border:1px solid #ddd;
-width:90%;
+input,button{
+padding:10px;margin:5px;border-radius:10px;border:none;
 }
 
-button{
-padding:10px;
-margin:5px;
-border:none;
-border-radius:10px;
-background:#4CAF50;
-color:#fff;
-transition:0.2s;
-}
-
-button:active{
-transform:scale(0.95);
-}
+button{background:#4CAF50;color:white;}
 
 .grid{
 display:grid;
 grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
-gap:12px;
+gap:10px;
 }
 
 .card{
-background:#fff;
-padding:12px;
-border-radius:15px;
-box-shadow:0 4px 12px rgba(0,0,0,0.1);
+background:white;
+padding:10px;
+border-radius:12px;
+box-shadow:0 3px 8px rgba(0,0,0,0.1);
 text-align:center;
-animation:fade 0.3s;
 }
 
-@keyframes fade{
-from{opacity:0;transform:translateY(10px);}
-to{opacity:1;}
-}
-
-img{
-width:80px;
-height:80px;
-border-radius:10px;
-}
+img{width:80px;height:80px;border-radius:10px;}
 
 .bottom-nav{
 position:fixed;
@@ -72,20 +41,13 @@ bottom:0;
 width:100%;
 height:70px;
 display:flex;
-background:#fff;
-border-top:1px solid #ddd;
+background:white;
+border-top:1px solid #ccc;
 }
 
-.bottom-nav button{
-flex:1;
-background:none;
-color:#333;
-}
+.bottom-nav button{flex:1;background:none;}
 
-.content{
-padding:15px;
-padding-bottom:90px;
-}
+.content{padding:15px;padding-bottom:90px;}
 </style>
 </head>
 
@@ -93,7 +55,6 @@ padding-bottom:90px;
 
 <div class="content">
 
-<!-- LOGIN -->
 <div id="loginDiv">
 <h2>🔐 Iniciar sesión</h2>
 <input id="email" placeholder="Correo">
@@ -102,16 +63,14 @@ padding-bottom:90px;
 <button onclick="registrar()">Registrarse</button>
 </div>
 
-<!-- APP -->
 <div id="app" style="display:none;">
 
 <!-- DASHBOARD -->
 <div id="dashboard">
 <h2>📊 Dashboard</h2>
-<p>💰 Ventas: <span id="ventas">0</span></p>
-<p>💸 Gastos: <span id="gastos">0</span></p>
-<p>📈 Ganancia: <span id="ganancia">0</span></p>
-
+<p>Ventas: <span id="ventas">0</span></p>
+<p>Gastos: <span id="gastos">0</span></p>
+<p>Ganancia: <span id="ganancia">0</span></p>
 <h3>👑 Creador MILO</h3>
 </div>
 
@@ -125,6 +84,17 @@ padding-bottom:90px;
 <button onclick="filtro='todo';cargar()">Todo</button>
 
 <div id="listaHistorial"></div>
+</div>
+
+<!-- CLIENTES / DEUDAS -->
+<div id="clientes" style="display:none;">
+<h2>👥 Clientes / Deudas</h2>
+
+<input id="nombreCliente" placeholder="Nombre">
+<input id="deudaCliente" type="number" placeholder="Monto">
+<button onclick="guardarCliente()">Guardar</button>
+
+<div id="listaClientes"></div>
 </div>
 
 <!-- VENDER -->
@@ -145,7 +115,6 @@ padding-bottom:90px;
 <input type="file" id="imagen">
 
 <button onclick="agregar()">Agregar</button>
-<button onclick="eliminarSeleccionado()">❌ Eliminar</button>
 
 <div class="grid" id="tabla"></div>
 </div>
@@ -159,6 +128,7 @@ padding-bottom:90px;
 <button onclick="mostrar('vender')">💰</button>
 <button onclick="mostrar('inventario')">📦</button>
 <button onclick="mostrar('historial')">📜</button>
+<button onclick="mostrar('clientes')">👥</button>
 <button onclick="logout()">🚪</button>
 </div>
 
@@ -175,7 +145,6 @@ const db=firebase.firestore();
 const auth=firebase.auth();
 
 let filtro="todo";
-let seleccionado=null;
 
 function login(){
 auth.signInWithEmailAndPassword(email.value,password.value)
@@ -200,7 +169,7 @@ location.reload();
 }
 
 function mostrar(id){
-["dashboard","vender","inventario","historial"].forEach(s=>{
+["dashboard","vender","inventario","historial","clientes"].forEach(s=>{
 document.getElementById(s).style.display="none";
 });
 document.getElementById(id).style.display="block";
@@ -235,16 +204,6 @@ imagen.value="";
 cargar();
 }
 
-function eliminarSeleccionado(){
-if(!seleccionado) return alert("Selecciona producto");
-
-if(confirm("¿Eliminar producto?")){
-db.collection("productos").doc(seleccionado).delete();
-seleccionado=null;
-cargar();
-}
-}
-
 function venderProducto(id,venta,nombre){
 if(confirm("¿Confirmar venta?")){
 db.collection("productos").doc(id).get().then(doc=>{
@@ -260,11 +219,36 @@ fecha:Date.now(),
 nombre:nombre
 });
 
-alert("🧾 Ticket:\n"+nombre+"\nS/ "+venta);
-
 cargar();
 }
 });
+}
+}
+
+function comprar(id,precio){
+let c=Number(prompt("Cantidad"))||0;
+
+db.collection("productos").doc(id).get().then(doc=>{
+let d=doc.data();
+
+db.collection("productos").doc(id).update({
+cantidad:d.cantidad+c
+});
+
+db.collection("movimientos").add({
+tipo:"gasto",
+monto:(Number(precio)||0)*c,
+fecha:Date.now()
+});
+
+cargar();
+});
+}
+
+function eliminar(id){
+if(confirm("¿Eliminar producto?")){
+db.collection("productos").doc(id).delete();
+cargar();
 }
 }
 
@@ -286,10 +270,12 @@ Stock: ${d.cantidad}<br>
 </div>`;
 
 tabla.innerHTML+=`
-<div class="card" onclick="seleccionado='${doc.id}'">
+<div class="card">
 <img src="${d.imagen||''}">
 <b>${d.nombre}</b><br>
-Stock: ${d.cantidad}
+Stock: ${d.cantidad}<br>
+<button onclick="comprar('${doc.id}',${d.compra})">+ Stock</button>
+<button onclick="eliminar('${doc.id}')">❌ Eliminar</button>
 </div>`;
 });
 
@@ -299,11 +285,11 @@ calcular();
 db.collection("movimientos").get().then(snap=>{
 listaHistorial.innerHTML="";
 let total=0;
-let ahora=Date.now();
+let now=Date.now();
 
 snap.forEach(doc=>{
 let d=doc.data();
-let diff=ahora-d.fecha;
+let diff=now-(d.fecha||0);
 
 if(filtro=="hoy" && diff>86400000) return;
 if(filtro=="semana" && diff>604800000) return;
@@ -313,13 +299,15 @@ total+=Number(d.monto)||0;
 
 listaHistorial.innerHTML+=`
 <div class="card">
-${d.nombre}<br>
+${d.nombre||"Gasto"}<br>
 S/ ${d.monto}
 </div>`;
 });
 
 listaHistorial.innerHTML+="<h3>Total: "+total+"</h3>";
 });
+
+cargarClientes();
 }
 
 function calcular(){
@@ -353,11 +341,45 @@ productosVenta.innerHTML+=`
 <img src="${d.imagen||''}">
 <b>${d.nombre}</b><br>
 S/ ${d.venta}<br>
+Stock: ${d.cantidad}<br>
 <button onclick="venderProducto('${doc.id}',${d.venta},'${d.nombre}')">Vender</button>
 </div>`;
 }
 });
 });
+}
+
+function guardarCliente(){
+db.collection("clientes").add({
+nombre:nombreCliente.value,
+deuda:Number(deudaCliente.value)||0
+});
+
+nombreCliente.value="";
+deudaCliente.value="";
+cargarClientes();
+}
+
+function cargarClientes(){
+db.collection("clientes").get().then(snap=>{
+listaClientes.innerHTML="";
+
+snap.forEach(doc=>{
+let d=doc.data();
+
+listaClientes.innerHTML+=`
+<div class="card">
+${d.nombre}<br>
+Debe: S/ ${d.deuda}<br>
+<button onclick="pagar('${doc.id}')">Ya pagó</button>
+</div>`;
+});
+});
+}
+
+function pagar(id){
+db.collection("clientes").doc(id).delete();
+cargarClientes();
 }
 </script>
 
