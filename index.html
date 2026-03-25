@@ -3,36 +3,56 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MILO APP PRO</title>
 
-<link rel="manifest" href="manifest.json">
+<title>MILO APP PRO</title>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
 body{margin:0;font-family:Arial;background:#f5f6fa;}
+
 h2{font-size:22px;}
-input,button{padding:10px;margin:5px;border-radius:10px;border:none;}
 
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+input,button{
+padding:10px;margin:5px;border-radius:10px;border:none;
+}
 
-.product{
-background:#fff;padding:10px;border-radius:12px;
-box-shadow:0 2px 6px rgba(0,0,0,0.1);
+button{
+background:#4CAF50;color:#fff;
+}
+
+.grid{
+display:grid;
+grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+gap:12px;
+}
+
+.card{
+background:#fff;
+padding:12px;
+border-radius:15px;
+box-shadow:0 4px 10px rgba(0,0,0,0.1);
 text-align:center;
 }
 
-img{width:90px;height:90px;border-radius:10px;}
+img{width:80px;height:80px;border-radius:10px;}
 
 .bottom-nav{
-position:fixed;bottom:0;width:100%;height:70px;
-display:flex;background:#fff;border-top:1px solid #ccc;
+position:fixed;
+bottom:0;
+width:100%;
+height:70px;
+display:flex;
+background:#fff;
+border-top:1px solid #ddd;
 }
 
-.bottom-nav button{flex:1;background:none;}
+.bottom-nav button{
+flex:1;
+background:none;
+}
 
 .content{padding:15px;padding-bottom:90px;}
 </style>
@@ -42,52 +62,45 @@ display:flex;background:#fff;border-top:1px solid #ccc;
 
 <div class="content">
 
-<!-- LOGIN -->
 <div id="loginDiv">
-<h2>🔐 Iniciar sesión</h2>
+<h2>🔐 Login</h2>
 <input id="email" placeholder="Correo">
 <input id="password" type="password" placeholder="Contraseña">
 <button onclick="login()">Entrar</button>
 <button onclick="registrar()">Registrarse</button>
 </div>
 
-<!-- APP -->
 <div id="app" style="display:none;">
 
 <!-- DASHBOARD -->
 <div id="dashboard">
 <h2>📊 Dashboard</h2>
-<p>💰 Ventas: <span id="ventas">0</span></p>
-<p>💸 Gastos: <span id="gastos">0</span></p>
-<p>📈 Ganancia: <span id="ganancia">0</span></p>
-
-<h3>👑 Creador MILO</h3>
+<p>Ventas: <span id="ventas">0</span></p>
+<p>Gastos: <span id="gastos">0</span></p>
+<p>Ganancia: <span id="ganancia">0</span></p>
 </div>
 
 <!-- HISTORIAL -->
 <div id="historial" style="display:none;">
 <h2>📜 Historial</h2>
+<button onclick="filtro='hoy';cargar()">Hoy</button>
+<button onclick="filtro='todo';cargar()">Todo</button>
 <div id="listaHistorial"></div>
 </div>
 
-<!-- DEUDAS -->
-<div id="deudas" style="display:none;">
-<h2>💳 Deudas</h2>
-
-<button onclick="tipoDeuda='cobrar'">Por cobrar</button>
-<button onclick="tipoDeuda='pagar'">Por pagar</button>
-
-<input id="cliente" placeholder="Nombre">
-<input id="monto" type="number" placeholder="Monto">
-<button onclick="agregarDeuda()">Guardar</button>
-
-<div id="listaDeudas"></div>
+<!-- CLIENTES -->
+<div id="clientes" style="display:none;">
+<h2>👥 Clientes</h2>
+<input id="nombreCliente" placeholder="Nombre">
+<input id="deudaCliente" type="number" placeholder="Monto">
+<button onclick="guardarCliente()">Guardar</button>
+<div id="listaClientes"></div>
 </div>
 
 <!-- VENDER -->
 <div id="vender" style="display:none;">
 <h2>💰 Vender</h2>
-<input id="buscar" placeholder="Buscar..." oninput="filtrar()">
+<input id="buscar" oninput="filtrar()" placeholder="Buscar">
 <div class="grid" id="productosVenta"></div>
 </div>
 
@@ -100,8 +113,8 @@ display:flex;background:#fff;border-top:1px solid #ccc;
 <input id="compra" type="number" placeholder="Compra">
 <input id="venta" type="number" placeholder="Venta">
 <input type="file" id="imagen">
+
 <button onclick="agregar()">Agregar</button>
-<button onclick="generarPDF()">📄 PDF</button>
 
 <div class="grid" id="tabla"></div>
 </div>
@@ -109,19 +122,18 @@ display:flex;background:#fff;border-top:1px solid #ccc;
 </div>
 </div>
 
-<!-- MENU -->
 <div class="bottom-nav">
 <button onclick="mostrar('dashboard')">📊</button>
 <button onclick="mostrar('vender')">💰</button>
 <button onclick="mostrar('inventario')">📦</button>
 <button onclick="mostrar('historial')">📜</button>
-<button onclick="mostrar('deudas')">💳</button>
-<button onclick="cerrarSesion()">🚪</button>
+<button onclick="mostrar('clientes')">👥</button>
+<button onclick="logout()">🚪</button>
 </div>
 
 <script>
 const firebaseConfig={
-apiKey:"AIzaSyDA0CoWdCAYTLEwgfBcyX6SHr5bwEf4tJc",
+apiKey:"AIzaSy...",
 authDomain:"inventario-6562e.firebaseapp.com",
 projectId:"inventario-6562e"
 };
@@ -130,7 +142,7 @@ firebase.initializeApp(firebaseConfig);
 const db=firebase.firestore();
 const auth=firebase.auth();
 
-let tipoDeuda="cobrar";
+let filtro="todo";
 
 function login(){
 auth.signInWithEmailAndPassword(email.value,password.value)
@@ -138,15 +150,14 @@ auth.signInWithEmailAndPassword(email.value,password.value)
 loginDiv.style.display="none";
 app.style.display="block";
 cargar();
-})
-.catch(e=>alert(e.message));
+});
 }
 
 function registrar(){
 auth.createUserWithEmailAndPassword(email.value,password.value);
 }
 
-function cerrarSesion(){
+function logout(){
 if(confirm("¿Cerrar sesión?")){
 auth.signOut();
 location.reload();
@@ -154,24 +165,21 @@ location.reload();
 }
 
 function mostrar(id){
-["dashboard","vender","inventario","historial","deudas"].forEach(s=>{
+["dashboard","vender","inventario","historial","clientes"].forEach(s=>{
 document.getElementById(s).style.display="none";
 });
 document.getElementById(id).style.display="block";
 }
 
-function convertirBase64(file){
-return new Promise(res=>{
-const r=new FileReader();
-r.readAsDataURL(file);
-r.onload=()=>res(r.result);
-});
-}
-
 async function agregar(){
 let file=imagen.files[0];
 let img="";
-if(file){img=await convertirBase64(file);}
+
+if(file){
+let reader=new FileReader();
+reader.readAsDataURL(file);
+await new Promise(res=>reader.onload=()=>{img=reader.result;res();});
+}
 
 db.collection("productos").add({
 nombre:producto.value,
@@ -183,48 +191,51 @@ imagen:img
 
 alert("Producto agregado");
 
-producto.value="";
-cantidad.value="";
-compra.value="";
-venta.value="";
-imagen.value="";
+producto.value="";cantidad.value="";compra.value="";venta.value="";imagen.value="";
 
 cargar();
 }
 
-function eliminar(id){
-if(confirm("¿Eliminar producto?")){
-db.collection("productos").doc(id).delete();
-cargar();
-}
-}
-
-function venderProducto(id,venta){
-if(confirm("¿Confirmar venta?")){
+function venderProducto(id,venta,nombre){
+if(confirm("¿Vender producto?")){
 db.collection("productos").doc(id).get().then(doc=>{
 let d=doc.data();
+
 if(d.cantidad>0){
 db.collection("productos").doc(id).update({cantidad:d.cantidad-1});
+
 db.collection("movimientos").add({
 tipo:"venta",
 monto:Number(venta)||0,
-fecha:new Date().toLocaleString()
+fecha:new Date().toLocaleString(),
+nombre:nombre
 });
+
+alert("🧾 Ticket:\n"+nombre+"\nS/ "+venta);
+
 cargar();
 }
 });
 }
 }
 
-function agregarDeuda(){
-db.collection("deudas").add({
-cliente:cliente.value,
-monto:Number(monto.value),
-tipo:tipoDeuda
+function comprar(id,precio){
+let c=Number(prompt("Cantidad"))||0;
+
+db.collection("productos").doc(id).get().then(doc=>{
+let d=doc.data();
+
+db.collection("productos").doc(id).update({
+cantidad:d.cantidad+c
 });
-cliente.value="";
-monto.value="";
+
+db.collection("movimientos").add({
+tipo:"gasto",
+monto:(Number(precio)||0)*c
+});
+
 cargar();
+});
 }
 
 function cargar(){
@@ -236,22 +247,22 @@ snap.forEach(doc=>{
 let d=doc.data();
 
 productosVenta.innerHTML+=`
-<div class="product">
+<div class="card">
 <img src="${d.imagen||''}">
 <b>${d.nombre}</b><br>
-💰 ${d.venta}<br>
-📦 ${d.cantidad}<br>
-<button onclick="venderProducto('${doc.id}',${d.venta})">Vender</button>
+S/ ${d.venta}<br>
+Stock: ${d.cantidad}<br>
+<button onclick="venderProducto('${doc.id}',${d.venta},'${d.nombre}')">Vender</button>
 </div>`;
 
 tabla.innerHTML+=`
-<div class="product">
+<div class="card">
 <img src="${d.imagen||''}">
 <b>${d.nombre}</b><br>
-💸 ${d.compra}<br>
-💰 ${d.venta}<br>
-📦 ${d.cantidad}<br>
-<button onclick="eliminar('${doc.id}')">❌</button>
+Compra: ${d.compra}<br>
+Venta: ${d.venta}<br>
+Stock: ${d.cantidad}<br>
+<button onclick="comprar('${doc.id}',${d.compra})">+ Stock</button>
 </div>`;
 });
 
@@ -260,28 +271,37 @@ calcular();
 
 db.collection("movimientos").get().then(snap=>{
 listaHistorial.innerHTML="";
+let total=0;
+
 snap.forEach(doc=>{
 let d=doc.data();
-listaHistorial.innerHTML+=`<div class="product">Venta S/ ${d.monto}<br>${d.fecha}</div>`;
-});
+
+if(filtro=="hoy" && !d.fecha.includes(new Date().toLocaleDateString())) return;
+
+total+=Number(d.monto)||0;
+
+listaHistorial.innerHTML+=`
+<div class="card">
+${d.nombre||"Gasto"}<br>
+S/ ${d.monto}<br>
+${d.fecha}
+</div>`;
 });
 
-db.collection("deudas").get().then(snap=>{
-listaDeudas.innerHTML="";
-snap.forEach(doc=>{
-let d=doc.data();
-listaDeudas.innerHTML+=`<div class="product">${d.cliente} - S/ ${d.monto} (${d.tipo})</div>`;
-});
+listaHistorial.innerHTML+="<h3>Total: "+total+"</h3>";
 });
 }
 
 function calcular(){
 db.collection("movimientos").get().then(snap=>{
 let v=0,g=0;
+
 snap.forEach(doc=>{
 let d=doc.data();
 if(d.tipo=="venta") v+=Number(d.monto)||0;
+else g+=Number(d.monto)||0;
 });
+
 ventas.innerText=v;
 gastos.innerText=g;
 ganancia.innerText=v-g;
@@ -290,49 +310,60 @@ ganancia.innerText=v-g;
 
 function filtrar(){
 let t=buscar.value.toLowerCase();
+
 db.collection("productos").get().then(snap=>{
 productosVenta.innerHTML="";
+
 snap.forEach(doc=>{
 let d=doc.data();
+
 if(d.nombre.toLowerCase().includes(t)){
 productosVenta.innerHTML+=`
-<div class="product">
+<div class="card">
+<img src="${d.imagen||''}">
 <b>${d.nombre}</b><br>
-💰 ${d.venta}<br>
-📦 ${d.cantidad}
+S/ ${d.venta}<br>
+Stock: ${d.cantidad}<br>
+<button onclick="venderProducto('${doc.id}',${d.venta},'${d.nombre}')">Vender</button>
 </div>`;
 }
 });
 });
 }
 
-async function generarPDF(){
-const { jsPDF } = window.jspdf;
-const doc = new jsPDF();
+function guardarCliente(){
+db.collection("clientes").add({
+nombre:nombreCliente.value,
+deuda:Number(deudaCliente.value)||0
+});
 
-let x=10,y=10,count=0;
-
-let productos=await db.collection("productos").get();
-
-for(const item of productos.docs){
-let d=item.data();
-
-doc.text(d.nombre,x,y);
-if(d.imagen) doc.addImage(d.imagen,"JPEG",x,y+5,40,40);
-
-x+=90;
-count++;
-
-if(count%2==0){x=10;y+=60;}
-if(count%4==0){doc.addPage();x=10;y=10;}
+nombreCliente.value="";
+deudaCliente.value="";
+cargarClientes();
 }
 
-doc.save("catalogo.pdf");
+function cargarClientes(){
+db.collection("clientes").get().then(snap=>{
+listaClientes.innerHTML="";
+
+snap.forEach(doc=>{
+let d=doc.data();
+
+listaClientes.innerHTML+=`
+<div class="card">
+${d.nombre}<br>
+Debe: S/ ${d.deuda}<br>
+<button onclick="pagar('${doc.id}')">Ya pagó</button>
+</div>`;
+});
+});
 }
 
-if("serviceWorker" in navigator){
-navigator.serviceWorker.register("service-worker.js");
+function pagar(id){
+db.collection("clientes").doc(id).delete();
+cargarClientes();
 }
+
 </script>
 
 </body>
