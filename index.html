@@ -4,32 +4,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MILO APP PRO MAX</title>
+<title>MILO APP PRO</title>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-body{margin:0;font-family:Arial;background:#f5f6fa;transition:0.3s;}
-.dark{background:#1e1e1e;color:white;}
+body{margin:0;font-family:Arial;background:#f5f6fa;}
 
-.card{
-background:white;
-padding:10px;
-border-radius:12px;
-margin:8px;
-box-shadow:0 3px 8px rgba(0,0,0,0.1);
-}
-.dark .card{background:#2c2c2c;}
+h2{margin:5px;}
 
-button{
-padding:10px;margin:5px;border:none;border-radius:10px;
-background:#4CAF50;color:white;
+input,button{
+padding:10px;margin:5px;border-radius:10px;border:none;
 }
+
+button{background:#4CAF50;color:white;}
 
 .grid{
 display:grid;
@@ -37,13 +28,22 @@ grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
 gap:10px;
 }
 
+.card{
+background:white;
+padding:10px;
+border-radius:12px;
+box-shadow:0 3px 8px rgba(0,0,0,0.1);
+text-align:center;
+}
+
 img{width:80px;height:80px;border-radius:10px;}
 
 .bottom-nav{
-position:fixed;bottom:0;width:100%;display:flex;background:#fff;
+position:fixed;bottom:0;width:100%;display:flex;background:white;
+border-top:1px solid #ccc;
 }
+
 .bottom-nav button{flex:1;background:none;}
-.dark .bottom-nav{background:#2c2c2c;}
 
 .content{padding:15px;padding-bottom:90px;}
 </style>
@@ -54,45 +54,42 @@ position:fixed;bottom:0;width:100%;display:flex;background:#fff;
 <div class="content">
 
 <div id="loginDiv">
-<h2>Login</h2>
+<h2>🔐 Iniciar sesión</h2>
 <input id="email" placeholder="Correo">
 <input id="password" type="password" placeholder="Contraseña">
 <button onclick="login()">Entrar</button>
-<button onclick="registrar()">Registrar</button>
+<button onclick="registrar()">Registrarse</button>
 </div>
 
 <div id="app" style="display:none;">
 
+<!-- DASHBOARD -->
 <div id="dashboard">
-<h2>Dashboard</h2>
+<h2>📊 Dashboard</h2>
 <p>Ventas: <span id="ventas">0</span></p>
 <p>Gastos: <span id="gastos">0</span></p>
 <p>Ganancia: <span id="ganancia">0</span></p>
 
-<button onclick="toggleModo()">🌙/☀️</button>
-
-<canvas id="grafico"></canvas>
+<canvas id="grafico" height="120"></canvas>
 
 <h3>👑 Creador MILO</h3>
 </div>
 
-<div id="inventario" style="display:none;">
-<h2>Inventario</h2>
+<!-- HISTORIAL -->
+<div id="historial" style="display:none;">
+<h2>📜 Historial</h2>
 
-<input id="producto" placeholder="Nombre">
-<input id="cantidad" type="number" placeholder="Cantidad">
-<input id="compra" type="number" placeholder="Compra">
-<input id="venta" type="number" placeholder="Venta">
-<input type="file" id="imagen">
+<button onclick="filtro='hoy';cargar()">Hoy</button>
+<button onclick="filtro='semana';cargar()">Semana</button>
+<button onclick="filtro='mes';cargar()">Mes</button>
+<button onclick="filtro='todo';cargar()">Todo</button>
 
-<button onclick="agregar()">Agregar</button>
-<button onclick="generarPDF()">📄 PDF</button>
-
-<div class="grid" id="tabla"></div>
+<div id="listaHistorial"></div>
 </div>
 
+<!-- CLIENTES -->
 <div id="clientes" style="display:none;">
-<h2>Clientes</h2>
+<h2>👥 Clientes</h2>
 
 <input id="nombreCliente" placeholder="Nombre">
 <input id="deudaCliente" type="number" placeholder="Monto">
@@ -101,12 +98,36 @@ position:fixed;bottom:0;width:100%;display:flex;background:#fff;
 <div id="listaClientes"></div>
 </div>
 
+<!-- VENDER -->
+<div id="vender" style="display:none;">
+<h2>💰 Vender</h2>
+<input id="buscar" placeholder="Buscar..." oninput="filtrar()">
+<div class="grid" id="productosVenta"></div>
+</div>
+
+<!-- INVENTARIO -->
+<div id="inventario" style="display:none;">
+<h2>📦 Inventario</h2>
+
+<input id="producto" placeholder="Nombre">
+<input id="cantidad" type="number" placeholder="Cantidad">
+<input id="compra" type="number" placeholder="Compra">
+<input id="venta" type="number" placeholder="Venta">
+<input type="file" id="imagen">
+
+<button onclick="agregar()">Agregar</button>
+
+<div class="grid" id="tabla"></div>
+</div>
+
 </div>
 </div>
 
 <div class="bottom-nav">
 <button onclick="mostrar('dashboard')">📊</button>
+<button onclick="mostrar('vender')">💰</button>
 <button onclick="mostrar('inventario')">📦</button>
+<button onclick="mostrar('historial')">📜</button>
 <button onclick="mostrar('clientes')">👥</button>
 <button onclick="logout()">🚪</button>
 </div>
@@ -122,6 +143,9 @@ firebase.initializeApp(firebaseConfig);
 
 const db=firebase.firestore();
 const auth=firebase.auth();
+
+let filtro="todo";
+let chart=null;
 
 function login(){
 auth.signInWithEmailAndPassword(email.value,password.value)
@@ -139,19 +163,17 @@ auth.createUserWithEmailAndPassword(email.value,password.value)
 }
 
 function logout(){
+if(confirm("¿Cerrar sesión?")){
 auth.signOut();
 location.reload();
 }
+}
 
 function mostrar(id){
-["dashboard","inventario","clientes"].forEach(s=>{
+["dashboard","vender","inventario","historial","clientes"].forEach(s=>{
 document.getElementById(s).style.display="none";
 });
 document.getElementById(id).style.display="block";
-}
-
-function toggleModo(){
-document.body.classList.toggle("dark");
 }
 
 async function agregar(){
@@ -172,35 +194,175 @@ venta:Number(venta.value)||0,
 imagen:img
 });
 
-producto.value="";cantidad.value="";compra.value="";venta.value="";
+producto.value="";cantidad.value="";compra.value="";venta.value="";imagen.value="";
 cargar();
+}
+
+function venderProducto(id,venta,nombre){
+if(confirm("¿Confirmar venta?")){
+db.collection("productos").doc(id).get().then(doc=>{
+let d=doc.data();
+if(d.cantidad>0){
+db.collection("productos").doc(id).update({cantidad:d.cantidad-1});
+db.collection("movimientos").add({
+tipo:"venta",
+monto:Number(venta),
+fecha:Date.now(),
+nombre:nombre
+});
+cargar();
+}
+});
+}
+}
+
+function comprar(id,precio){
+let c=Number(prompt("Cantidad"))||0;
+
+db.collection("productos").doc(id).get().then(doc=>{
+let d=doc.data();
+db.collection("productos").doc(id).update({cantidad:d.cantidad+c});
+db.collection("movimientos").add({
+tipo:"gasto",
+monto:precio*c,
+fecha:Date.now()
+});
+cargar();
+});
+}
+
+function eliminar(id){
+if(confirm("¿Eliminar producto?")){
+db.collection("productos").doc(id).delete();
+cargar();
+}
 }
 
 function cargar(){
 db.collection("productos").get().then(snap=>{
+productosVenta.innerHTML="";
 tabla.innerHTML="";
+
 snap.forEach(doc=>{
 let d=doc.data();
+
+productosVenta.innerHTML+=`
+<div class="card">
+<img src="${d.imagen||''}">
+<b>${d.nombre}</b><br>
+S/ ${d.venta}<br>
+Stock: ${d.cantidad}<br>
+<button onclick="venderProducto('${doc.id}',${d.venta},'${d.nombre}')">Vender</button>
+</div>`;
 
 tabla.innerHTML+=`
 <div class="card">
 <img src="${d.imagen||''}">
 <b>${d.nombre}</b><br>
 Stock: ${d.cantidad}<br>
+<button onclick="comprar('${doc.id}',${d.compra})">+ Stock</button>
 <button onclick="eliminar('${doc.id}')">❌</button>
 </div>`;
 });
+
+calcular();
+grafica();
+});
+
+db.collection("movimientos").get().then(snap=>{
+listaHistorial.innerHTML="";
+let total=0;
+let now=Date.now();
+
+snap.forEach(doc=>{
+let d=doc.data();
+let diff=now-(d.fecha||0);
+
+if(filtro=="hoy" && diff>86400000) return;
+if(filtro=="semana" && diff>604800000) return;
+if(filtro=="mes" && diff>2592000000) return;
+
+total+=Number(d.monto)||0;
+
+listaHistorial.innerHTML+=`
+<div class="card">
+${d.nombre||"Gasto"}<br>
+S/ ${d.monto}
+</div>`;
+});
+
+listaHistorial.innerHTML+="<h3>Total: "+total+"</h3>";
 });
 
 cargarClientes();
-grafica();
 }
 
-function eliminar(id){
-if(confirm("Eliminar producto?")){
-db.collection("productos").doc(id).delete();
-cargar();
+function calcular(){
+db.collection("movimientos").get().then(snap=>{
+let v=0,g=0;
+snap.forEach(doc=>{
+let d=doc.data();
+if(d.tipo=="venta") v+=Number(d.monto);
+else g+=Number(d.monto);
+});
+ventas.innerText=v;
+gastos.innerText=g;
+ganancia.innerText=v-g;
+});
 }
+
+function grafica(){
+db.collection("movimientos").get().then(snap=>{
+let datos={};
+
+snap.forEach(doc=>{
+let d=doc.data();
+if(d.tipo!="venta") return;
+
+let fecha=new Date(d.fecha).toLocaleDateString();
+datos[fecha]=(datos[fecha]||0)+d.monto;
+});
+
+let labels=Object.keys(datos);
+let valores=Object.values(datos);
+
+if(chart) chart.destroy();
+
+chart=new Chart(grafico,{
+type:"line",
+data:{
+labels:labels,
+datasets:[{
+label:"Ventas",
+data:valores,
+borderWidth:2
+}]
+}
+});
+});
+}
+
+function filtrar(){
+let t=buscar.value.toLowerCase();
+
+db.collection("productos").get().then(snap=>{
+productosVenta.innerHTML="";
+
+snap.forEach(doc=>{
+let d=doc.data();
+
+if(d.nombre.toLowerCase().includes(t)){
+productosVenta.innerHTML+=`
+<div class="card">
+<img src="${d.imagen||''}">
+<b>${d.nombre}</b><br>
+S/ ${d.venta}<br>
+Stock: ${d.cantidad}<br>
+<button onclick="venderProducto('${doc.id}',${d.venta},'${d.nombre}')">Vender</button>
+</div>`;
+}
+});
+});
 }
 
 function guardarCliente(){
@@ -228,55 +390,10 @@ Debe: ${d.deuda}<br>
 }
 
 function pagar(id){
+if(confirm("¿Confirmar pago?")){
 db.collection("clientes").doc(id).delete();
 cargarClientes();
 }
-
-function grafica(){
-db.collection("movimientos").get().then(snap=>{
-let dias={};
-
-snap.forEach(doc=>{
-let d=doc.data();
-let fecha=new Date(d.fecha||Date.now()).toLocaleDateString();
-
-if(d.tipo=="venta"){
-dias[fecha]=(dias[fecha]||0)+d.monto;
-}
-});
-
-let labels=Object.keys(dias);
-let data=Object.values(dias);
-
-new Chart(document.getElementById("grafico"),{
-type:"line",
-data:{labels:labels,datasets:[{label:"Ventas",data:data}]}
-});
-});
-}
-
-function generarPDF(){
-const {jsPDF}=window.jspdf;
-let doc=new jsPDF();
-
-db.collection("productos").get().then(snap=>{
-let x=10,y=10,count=0;
-
-snap.forEach(docu=>{
-let d=docu.data();
-
-doc.text(d.nombre,x,y);
-y+=10;
-count++;
-
-if(count%4==0){
-doc.addPage();
-y=10;
-}
-});
-
-doc.save("catalogo.pdf");
-});
 }
 </script>
 
