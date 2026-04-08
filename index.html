@@ -13,39 +13,30 @@
 <style>
 body{margin:0;font-family:Arial;background:#f2f4f7;color:#000;}
 h2{margin:10px;}
+input{padding:10px;margin:5px;border-radius:10px;border:1px solid #ddd;width:90%;}
+button{padding:10px;margin:5px;border:none;border-radius:10px;background:#2ecc71;color:white;font-weight:bold;}
 
-input{
-  padding:10px;margin:5px;border-radius:10px;border:1px solid #ddd;width:90%;
-}
-
-button{
-  padding:10px;margin:5px;border:none;border-radius:10px;background:#2ecc71;color:white;font-weight:bold;
-}
-
-.grid{
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;
-}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;}
 
 .card{
-  background:white;padding:12px;border-radius:15px;
-  box-shadow:0 4px 10px rgba(0,0,0,0.08);text-align:center;
+background:white;padding:12px;border-radius:15px;
+box-shadow:0 4px 10px rgba(0,0,0,0.08);text-align:center;
 }
 
 img{width:80px;height:80px;border-radius:10px;}
 
 .bottom-nav{
-  position:fixed;bottom:0;width:100%;display:flex;background:white;border-top:1px solid #ccc;
+position:fixed;bottom:0;width:100%;display:flex;background:white;border-top:1px solid #ccc;
 }
 .bottom-nav button{flex:1;background:none;}
 
 .content{padding:15px;padding-bottom:90px;}
 
-/* 🌙 DARK MODE */
+/* DARK MODE */
 .dark{background:#121212;color:white;}
 .dark .card{background:#1e1e1e;}
 .dark input{background:#2a2a2a;color:white;border:1px solid #444;}
 .dark .bottom-nav{background:#1e1e1e;}
-.dark button{background:#27ae60;}
 </style>
 </head>
 
@@ -68,3 +59,242 @@ img{width:80px;height:80px;border-radius:10px;}
 <p>Ventas: <span id="ventas">0</span></p>
 <p>Ganancia Total: <span id="ganancia">0</span></p>
 <p>Ganancia Hoy: <span id="gananciaHoy">0</span></p>
+<p>Ganancia Mes: <span id="gananciaMes">0</span></p>
+
+<button onclick="toggleDark()">🌙</button>
+</div>
+
+<div id="inventario">
+<h2>📦 Inventario</h2>
+
+<input id="producto" placeholder="Nombre">
+<input id="cantidad" type="number" placeholder="Cantidad">
+<input id="compra" type="number" placeholder="Compra">
+<input id="venta" type="number" placeholder="Venta">
+<input type="file" id="imagen">
+
+<button onclick="agregar()">Agregar</button>
+
+<div class="grid" id="tabla"></div>
+</div>
+
+<div id="vender">
+<h2>💰 Vender</h2>
+<div class="grid" id="productosVenta"></div>
+</div>
+
+</div>
+</div>
+
+<div class="bottom-nav">
+<button onclick="mostrar('dashboard')">📊</button>
+<button onclick="mostrar('inventario')">📦</button>
+<button onclick="mostrar('vender')">💰</button>
+<button onclick="logout()">🚪</button>
+</div>
+
+<script>
+const firebaseConfig={
+apiKey:"AIzaSyDA0CoWdCAYTLEwgfBcyX6SHr5bwEf4tJc",
+authDomain:"inventario-6562e.firebaseapp.com",
+projectId:"inventario-6562e"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore();
+const auth=firebase.auth();
+
+let userId=null;
+
+auth.onAuthStateChanged(user=>{
+if(user){
+userId=user.uid;
+loginDiv.style.display="none";
+app.style.display="block";
+cargar();
+}
+});
+
+function login(){
+let correo=document.getElementById("email").value;
+let pass=document.getElementById("password").value;
+
+auth.signInWithEmailAndPassword(correo,pass)
+.catch(e=>alert(e.message));
+}
+
+function registrar(){
+let correo=document.getElementById("email").value;
+let pass=document.getElementById("password").value;
+
+auth.createUserWithEmailAndPassword(correo,pass)
+.catch(e=>alert(e.message));
+}
+
+function logout(){
+if(confirm("¿Cerrar sesión?")){
+auth.signOut();
+location.reload();
+}
+}
+
+function mostrar(id){
+["dashboard","inventario","vender"].forEach(s=>{
+document.getElementById(s).style.display="none";
+});
+document.getElementById(id).style.display="block";
+}
+
+function toggleDark(){
+document.body.classList.toggle("dark");
+localStorage.setItem("dark",document.body.classList.contains("dark"));
+}
+if(localStorage.getItem("dark")==="true"){
+document.body.classList.add("dark");
+}
+
+async function agregar(){
+let file=imagen.files[0];
+let img="";
+
+if(file){
+let reader=new FileReader();
+reader.readAsDataURL(file);
+await new Promise(r=>reader.onload=()=>{img=reader.result;r();});
+}
+
+db.collection("productos").add({
+userId,
+nombre:producto.value,
+cantidad:Number(cantidad.value)||0,
+compra:Number(compra.value)||0,
+venta:Number(venta.value)||0,
+imagen:img
+});
+
+producto.value="";cantidad.value="";compra.value="";venta.value="";
+cargar();
+}
+
+function aumentarStock(id){
+let c=Number(prompt("Cantidad a agregar"))||0;
+db.collection("productos").doc(id).get().then(doc=>{
+let d=doc.data();
+db.collection("productos").doc(id).update({
+cantidad:d.cantidad+c
+});
+cargar();
+});
+}
+
+function eliminar(id){
+if(confirm("¿Eliminar producto?")){
+db.collection("productos").doc(id).delete();
+cargar();
+}
+}
+
+function venderProducto(id,venta,nombre,compra){
+if(confirm("Confirmar venta")){
+db.collection("productos").doc(id).get().then(doc=>{
+let d=doc.data();
+
+if(d.cantidad>0){
+db.collection("productos").doc(id).update({cantidad:d.cantidad-1});
+
+db.collection("movimientos").add({
+userId,
+tipo:"venta",
+monto:Number(venta)||0,
+ganancia:(Number(venta)||0)-(Number(compra)||0),
+fecha:Date.now(),
+nombre
+});
+
+if(confirm("¿Generar comprobante?")){
+generarPDF(nombre,venta);
+}
+
+cargar();
+}
+});
+}
+}
+
+function generarPDF(nombre,precio){
+const { jsPDF } = window.jspdf;
+let doc=new jsPDF();
+
+doc.setFont("courier");
+doc.text("====== MILO STORE ======",10,10);
+doc.text("Producto: "+nombre,10,30);
+doc.text("Precio: S/ "+precio,10,40);
+doc.text("TOTAL: S/ "+precio,10,60);
+doc.text("Estado: PAGADO",10,80);
+
+doc.save("comprobante.pdf");
+}
+
+function cargar(){
+db.collection("productos").where("userId","==",userId).get().then(snap=>{
+tabla.innerHTML="";
+productosVenta.innerHTML="";
+
+snap.forEach(doc=>{
+let d=doc.data();
+
+tabla.innerHTML+=`
+<div class="card">
+<img src="${d.imagen||''}">
+<b>${d.nombre}</b><br>
+Stock: ${d.cantidad}<br>
+
+<button onclick="aumentarStock('${doc.id}')">➕</button>
+<button onclick="eliminar('${doc.id}')">❌</button>
+</div>`;
+
+productosVenta.innerHTML+=`
+<div class="card">
+<img src="${d.imagen||''}">
+<b>${d.nombre}</b><br>
+S/ ${d.venta}<br>
+<button onclick="venderProducto('${doc.id}',${d.venta},'${d.nombre}',${d.compra})">Vender</button>
+</div>`;
+});
+
+calcular();
+});
+}
+
+function calcular(){
+db.collection("movimientos").where("userId","==",userId).get().then(snap=>{
+let v=0,gan=0,hoy=0,mes=0;
+let now=new Date();
+
+snap.forEach(doc=>{
+let d=doc.data();
+let f=new Date(d.fecha);
+
+if(d.tipo=="venta"){
+v+=Number(d.monto)||0;
+gan+=Number(d.ganancia)||0;
+
+if(f.toDateString()==now.toDateString()){
+hoy+=d.ganancia||0;
+}
+if(f.getMonth()==now.getMonth()){
+mes+=d.ganancia||0;
+}
+}
+});
+
+ventas.innerText=v;
+ganancia.innerText=gan;
+gananciaHoy.innerText=hoy;
+gananciaMes.innerText=mes;
+});
+}
+</script>
+
+</body>
+</html>
