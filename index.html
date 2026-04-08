@@ -8,88 +8,104 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-body{margin:0;font-family:Arial;background:#f2f4f7;}
-h2{margin:10px;}
+body{
+margin:0;
+font-family:Arial;
+background:#f2f4f7;
+color:#000;
+transition:0.3s;
+}
 
-input{padding:10px;margin:5px;border-radius:10px;border:1px solid #ddd;width:90%;}
-button{padding:10px;margin:5px;border:none;border-radius:10px;background:#2ecc71;color:white;font-weight:bold;}
-button:active{transform:scale(0.95);}
-
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;}
+.dark{
+background:#121212;
+color:#fff;
+}
 
 .card{
-background:white;padding:12px;border-radius:15px;
+background:white;
+padding:12px;
+border-radius:15px;
 box-shadow:0 4px 10px rgba(0,0,0,0.08);
-text-align:center;
-animation:fadeIn 0.3s ease;
+margin:10px 0;
 }
 
-@keyframes fadeIn{
-from{opacity:0;transform:translateY(10px);}
-to{opacity:1;transform:translateY(0);}
+.dark .card{
+background:#1e1e1e;
 }
 
-img{width:80px;height:80px;border-radius:10px;}
+button{
+padding:10px;
+margin:5px;
+border:none;
+border-radius:10px;
+background:#2ecc71;
+color:white;
+}
 
-.bottom-nav{position:fixed;bottom:0;width:100%;display:flex;background:white;border-top:1px solid #ccc;}
-.bottom-nav button{flex:1;background:none;}
+input{
+padding:10px;
+margin:5px;
+width:90%;
+border-radius:10px;
+}
 
-.content{padding:15px;padding-bottom:120px;}
+.bottom-nav{
+position:fixed;
+bottom:0;
+width:100%;
+display:flex;
+background:white;
+}
+
+.dark .bottom-nav{
+background:#1e1e1e;
+}
+
+.bottom-nav button{
+flex:1;
+background:none;
+}
 
 #ticket{
-position:fixed;bottom:0;left:0;width:100%;
-background:white;padding:15px;
-border-top:2px solid #2ecc71;
+position:fixed;
+bottom:0;
+width:100%;
+background:white;
+padding:15px;
 display:none;
 }
 
-.ticket-box{
-border:1px dashed #000;
-padding:10px;
-font-family:monospace;
+.dark #ticket{
+background:#1e1e1e;
 }
 </style>
 </head>
 
 <body>
 
-<div class="content">
-
 <div id="loginDiv">
-<h2>🔐 Iniciar sesión</h2>
-<input id="email" placeholder="Correo">
-<input id="password" type="password" placeholder="Contraseña">
+<h2>Login</h2>
+<input id="email">
+<input id="password" type="password">
 <button onclick="login()">Entrar</button>
 <button onclick="registrar()">Registrarse</button>
 </div>
 
-<div id="app" style="display:none;">
+<div id="app" style="display:none; padding:10px;">
 
-<div id="dashboard">
-<h2>📊 Dashboard</h2>
+<h2>Dashboard</h2>
 <p>Ventas: <span id="ventas">0</span></p>
 <p>Ganancia Total: <span id="ganancia">0</span></p>
-<p>Ganancia Hoy: <span id="gananciaHoy">0</span></p>
-<p>Ganancia Mes: <span id="gananciaMes">0</span></p>
+<p>Hoy: <span id="gananciaHoy">0</span></p>
+<p>Mes: <span id="gananciaMes">0</span></p>
+<p>🔥 Top: <span id="topProducto">-</span></p>
 
-<p>🔥 Producto Top: <span id="topProducto">-</span></p>
+<button onclick="toggleDark()">🌙 Modo oscuro</button>
 
-<canvas id="grafico" height="120"></canvas>
-<h3>👑 Creador MILO</h3>
-</div>
-
-<div id="vender" style="display:none;">
-<h2>💰 Vender</h2>
-<input id="buscar" placeholder="Buscar..." oninput="filtrar()">
-<div class="grid" id="productosVenta"></div>
-</div>
-
-<div id="inventario" style="display:none;">
-<h2>📦 Inventario</h2>
+<h3>Inventario</h3>
 
 <input id="producto" placeholder="Nombre">
 <input id="cantidad" type="number" placeholder="Cantidad">
@@ -99,23 +115,18 @@ font-family:monospace;
 
 <button onclick="agregar()">Agregar</button>
 
-<div class="grid" id="tabla"></div>
-</div>
+<div id="tabla"></div>
 
-</div>
+<h3>Vender</h3>
+<input id="buscar" oninput="filtrar()">
+<div id="productosVenta"></div>
+
 </div>
 
 <div id="ticket">
-<div class="ticket-box" id="ticketContenido"></div>
-<button onclick="descargarPDF()">Descargar PDF</button>
+<div id="ticketContenido"></div>
+<button onclick="descargarPDF()">PDF</button>
 <button onclick="cerrarTicket()">Cerrar</button>
-</div>
-
-<div class="bottom-nav">
-<button onclick="mostrar('dashboard')">📊</button>
-<button onclick="mostrar('vender')">💰</button>
-<button onclick="mostrar('inventario')">📦</button>
-<button onclick="logout()">🚪</button>
 </div>
 
 <script>
@@ -130,7 +141,6 @@ const db=firebase.firestore();
 const auth=firebase.auth();
 
 let userId=null;
-let chart=null;
 let ticketData=null;
 
 auth.onAuthStateChanged(user=>{
@@ -142,13 +152,23 @@ cargar();
 }
 });
 
-function login(){auth.signInWithEmailAndPassword(email.value,password.value).catch(e=>alert(e.message));}
-function registrar(){auth.createUserWithEmailAndPassword(email.value,password.value).catch(e=>alert(e.message));}
-function logout(){if(confirm("¿Cerrar sesión?")){auth.signOut();location.reload();}}
+function toggleDark(){
+document.body.classList.toggle("dark");
+localStorage.setItem("dark",document.body.classList.contains("dark"));
+}
 
-function mostrar(id){
-["dashboard","vender","inventario"].forEach(s=>document.getElementById(s).style.display="none");
-document.getElementById(id).style.display="block";
+if(localStorage.getItem("dark")=="true"){
+document.body.classList.add("dark");
+}
+
+function login(){
+auth.signInWithEmailAndPassword(email.value,password.value)
+.catch(e=>alert(e.message));
+}
+
+function registrar(){
+auth.createUserWithEmailAndPassword(email.value,password.value)
+.catch(e=>alert(e.message));
 }
 
 async function agregar(){
@@ -162,26 +182,28 @@ await new Promise(r=>reader.onload=()=>{img=reader.result;r();});
 }
 
 db.collection("productos").add({
-userId,nombre:producto.value,
+userId,
+nombre:producto.value,
 cantidad:Number(cantidad.value)||0,
 compra:Number(compra.value)||0,
 venta:Number(venta.value)||0,
 imagen:img
 });
 
-alert("Producto agregado");
-producto.value="";cantidad.value="";compra.value="";venta.value="";imagen.value="";
+producto.value="";
+cantidad.value="";
+compra.value="";
+venta.value="";
+imagen.value="";
 cargar();
 }
 
 function venderProducto(id,venta,nombre,compra){
-if(confirm("¿Confirmar venta?")){
-
+if(confirm("Confirmar venta?")){
 db.collection("productos").doc(id).get().then(doc=>{
 let d=doc.data();
 
 if(d.cantidad>0){
-
 db.collection("productos").doc(id).update({cantidad:d.cantidad-1});
 
 db.collection("movimientos").add({
@@ -190,11 +212,10 @@ tipo:"venta",
 monto:Number(venta)||0,
 ganancia:(Number(venta)||0)-(Number(compra)||0),
 fecha:Date.now(),
-nombre:nombre
+nombre
 });
 
 mostrarTicket(nombre,venta);
-
 cargar();
 }
 });
@@ -204,21 +225,17 @@ cargar();
 function mostrarTicket(nombre,precio){
 let fecha=new Date().toLocaleString();
 
-ticketData={nombre,precio,fecha};
-
 ticketContenido.innerHTML=`
-======== MILO STORE ========<br><br>
-Fecha: ${fecha}<br><br>
-Producto: ${nombre}<br>
-Cantidad: 1<br>
-Precio: S/ ${precio}<br>
----------------------------<br>
+<b>MILO STORE</b><br>
+${fecha}<br><br>
+${nombre}<br>
+S/ ${precio}<br><br>
 TOTAL: S/ ${precio}<br>
----------------------------<br>
-Estado: PAGADO
 `;
 
 ticket.style.display="block";
+
+ticketData={nombre,precio,fecha};
 }
 
 function cerrarTicket(){
@@ -229,8 +246,7 @@ function descargarPDF(){
 const { jsPDF } = window.jspdf;
 let doc=new jsPDF();
 
-doc.setFont("courier");
-doc.text(ticketContenido.innerText,10,10);
+doc.text(`MILO STORE\n${ticketData.fecha}\n\n${ticketData.nombre}\nS/ ${ticketData.precio}\n\nTOTAL: S/ ${ticketData.precio}`,10,10);
 
 doc.save("comprobante.pdf");
 }
@@ -245,50 +261,39 @@ let d=doc.data();
 
 tabla.innerHTML+=`
 <div class="card">
-<img src="${d.imagen||''}">
-<b>${d.nombre}</b><br>
+${d.nombre}<br>
 <span style="color:${d.cantidad<=3?'red':'black'}">
 Stock: ${d.cantidad}
-</span>
-${d.cantidad<=3?'<br>⚠️ Poco stock':''}
-</div>`;
-
-productosVenta.innerHTML+=`
-<div class="card">
-<img src="${d.imagen||''}">
-<b>${d.nombre}</b><br>
-S/ ${d.venta}<br>
+</span><br>
 <button onclick="venderProducto('${doc.id}',${d.venta},'${d.nombre}',${d.compra})">Vender</button>
 </div>`;
 });
 
+productosVenta.innerHTML=tabla.innerHTML;
+
 calcular();
-grafica();
 });
 }
 
 function calcular(){
 db.collection("movimientos").where("userId","==",userId).get().then(snap=>{
-let v=0,gan=0;
-let hoy=0,mes=0;
+let v=0,gan=0,hoy=0,mes=0;
 let conteo={};
-
 let now=new Date();
 
 snap.forEach(doc=>{
 let d=doc.data();
-let fecha=new Date(d.fecha);
+let f=new Date(d.fecha);
 
 if(d.tipo=="venta"){
 v+=Number(d.monto)||0;
 gan+=Number(d.ganancia)||0;
 
-if(fecha.toDateString()==now.toDateString()){
-hoy+=Number(d.ganancia)||0;
+if(f.toDateString()==now.toDateString()){
+hoy+=d.ganancia||0;
 }
-
-if(fecha.getMonth()==now.getMonth()){
-mes+=Number(d.ganancia)||0;
+if(f.getMonth()==now.getMonth()){
+mes+=d.ganancia||0;
 }
 
 conteo[d.nombre]=(conteo[d.nombre]||0)+1;
@@ -301,31 +306,7 @@ gananciaHoy.innerText=hoy;
 gananciaMes.innerText=mes;
 
 let top=Object.entries(conteo).sort((a,b)=>b[1]-a[1])[0];
-topProducto.innerText=top?`${top[0]} (${top[1]})`:"-";
-});
-}
-
-function grafica(){
-db.collection("movimientos").where("userId","==",userId).get().then(snap=>{
-let datos={};
-
-snap.forEach(doc=>{
-let d=doc.data();
-if(d.tipo=="venta"){
-let fecha=new Date(d.fecha).toLocaleDateString();
-datos[fecha]=(datos[fecha]||0)+Number(d.monto||0);
-}
-});
-
-if(chart) chart.destroy();
-
-chart=new Chart(grafico,{
-type:"line",
-data:{
-labels:Object.keys(datos),
-datasets:[{label:"Ventas",data:Object.values(datos),tension:0.4}]
-}
-});
+topProducto.innerText=top?top[0]:"-";
 });
 }
 
@@ -341,9 +322,8 @@ let d=doc.data();
 if(d.nombre.toLowerCase().includes(t)){
 productosVenta.innerHTML+=`
 <div class="card">
-<img src="${d.imagen||''}">
-<b>${d.nombre}</b><br>
-S/ ${d.venta}<br>
+${d.nombre}<br>
+Stock: ${d.cantidad}<br>
 <button onclick="venderProducto('${doc.id}',${d.venta},'${d.nombre}',${d.compra})">Vender</button>
 </div>`;
 }
