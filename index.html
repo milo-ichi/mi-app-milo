@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MILO APP</title>
+
+<title>MILO APP PRO</title>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
@@ -13,6 +14,7 @@
 <style>
 body{margin:0;font-family:Arial;background:#f2f4f7;color:#000;}
 h2{margin:10px;}
+
 input{padding:10px;margin:5px;border-radius:10px;border:1px solid #ddd;width:90%;}
 button{padding:10px;margin:5px;border:none;border-radius:10px;background:#2ecc71;color:white;font-weight:bold;}
 
@@ -20,7 +22,8 @@ button{padding:10px;margin:5px;border:none;border-radius:10px;background:#2ecc71
 
 .card{
 background:white;padding:12px;border-radius:15px;
-box-shadow:0 4px 10px rgba(0,0,0,0.08);text-align:center;
+box-shadow:0 4px 10px rgba(0,0,0,0.08);
+text-align:center;
 }
 
 img{width:80px;height:80px;border-radius:10px;}
@@ -30,13 +33,32 @@ position:fixed;bottom:0;width:100%;display:flex;background:white;border-top:1px 
 }
 .bottom-nav button{flex:1;background:none;}
 
-.content{padding:15px;padding-bottom:90px;}
+.content{padding:15px;padding-bottom:100px;}
 
-/* DARK MODE */
+/* ticket */
+#ticket{
+position:fixed;
+bottom:0;
+left:0;
+width:100%;
+background:white;
+padding:15px;
+border-top:3px solid #2ecc71;
+display:none;
+}
+
+.ticket-box{
+font-family:monospace;
+border:1px dashed black;
+padding:10px;
+}
+
+/* dark */
 .dark{background:#121212;color:white;}
 .dark .card{background:#1e1e1e;}
-.dark input{background:#2a2a2a;color:white;border:1px solid #444;}
+.dark input{background:#2a2a2a;color:white;}
 .dark .bottom-nav{background:#1e1e1e;}
+.dark #ticket{background:#1e1e1e;}
 </style>
 </head>
 
@@ -54,23 +76,30 @@ position:fixed;bottom:0;width:100%;display:flex;background:white;border-top:1px 
 
 <div id="app" style="display:none;">
 
+<!-- DASHBOARD -->
 <div id="dashboard">
 <h2>📊 Dashboard</h2>
 <p>Ventas: <span id="ventas">0</span></p>
-<p>Ganancia Total: <span id="ganancia">0</span></p>
-<p>Ganancia Hoy: <span id="gananciaHoy">0</span></p>
-<p>Ganancia Mes: <span id="gananciaMes">0</span></p>
-
+<p>Gastos: <span id="gastos">0</span></p>
+<p>Ganancia: <span id="ganancia">0</span></p>
 <button onclick="toggleDark()">🌙</button>
 </div>
 
-<div id="inventario">
+<!-- VENDER -->
+<div id="vender" style="display:none;">
+<h2>💰 Vender</h2>
+<input id="buscar" placeholder="Buscar producto..." oninput="filtrar()">
+<div class="grid" id="productosVenta"></div>
+</div>
+
+<!-- INVENTARIO -->
+<div id="inventario" style="display:none;">
 <h2>📦 Inventario</h2>
 
 <input id="producto" placeholder="Nombre">
 <input id="cantidad" type="number" placeholder="Cantidad">
-<input id="compra" type="number" placeholder="Compra">
-<input id="venta" type="number" placeholder="Venta">
+<input id="compra" type="number" placeholder="Precio compra">
+<input id="venta" type="number" placeholder="Precio venta">
 <input type="file" id="imagen">
 
 <button onclick="agregar()">Agregar</button>
@@ -78,18 +107,20 @@ position:fixed;bottom:0;width:100%;display:flex;background:white;border-top:1px 
 <div class="grid" id="tabla"></div>
 </div>
 
-<div id="vender">
-<h2>💰 Vender</h2>
-<div class="grid" id="productosVenta"></div>
+</div>
 </div>
 
-</div>
+<!-- ticket visual -->
+<div id="ticket">
+<div class="ticket-box" id="ticketContenido"></div>
+<button onclick="descargarPDF()">Descargar PDF</button>
+<button onclick="cerrarTicket()">Cerrar</button>
 </div>
 
 <div class="bottom-nav">
 <button onclick="mostrar('dashboard')">📊</button>
-<button onclick="mostrar('inventario')">📦</button>
 <button onclick="mostrar('vender')">💰</button>
+<button onclick="mostrar('inventario')">📦</button>
 <button onclick="logout()">🚪</button>
 </div>
 
@@ -101,10 +132,12 @@ projectId:"inventario-6562e"
 };
 
 firebase.initializeApp(firebaseConfig);
+
 const db=firebase.firestore();
 const auth=firebase.auth();
 
 let userId=null;
+let ticketData=null;
 
 auth.onAuthStateChanged(user=>{
 if(user){
@@ -118,7 +151,6 @@ cargar();
 function login(){
 let correo=document.getElementById("email").value;
 let pass=document.getElementById("password").value;
-
 auth.signInWithEmailAndPassword(correo,pass)
 .catch(e=>alert(e.message));
 }
@@ -126,7 +158,6 @@ auth.signInWithEmailAndPassword(correo,pass)
 function registrar(){
 let correo=document.getElementById("email").value;
 let pass=document.getElementById("password").value;
-
 auth.createUserWithEmailAndPassword(correo,pass)
 .catch(e=>alert(e.message));
 }
@@ -139,7 +170,7 @@ location.reload();
 }
 
 function mostrar(id){
-["dashboard","inventario","vender"].forEach(s=>{
+["dashboard","vender","inventario"].forEach(s=>{
 document.getElementById(s).style.display="none";
 });
 document.getElementById(id).style.display="block";
@@ -149,7 +180,7 @@ function toggleDark(){
 document.body.classList.toggle("dark");
 localStorage.setItem("dark",document.body.classList.contains("dark"));
 }
-if(localStorage.getItem("dark")==="true"){
+if(localStorage.getItem("dark")=="true"){
 document.body.classList.add("dark");
 }
 
@@ -178,6 +209,7 @@ cargar();
 
 function aumentarStock(id){
 let c=Number(prompt("Cantidad a agregar"))||0;
+
 db.collection("productos").doc(id).get().then(doc=>{
 let d=doc.data();
 db.collection("productos").doc(id).update({
@@ -195,7 +227,7 @@ cargar();
 }
 
 function venderProducto(id,venta,nombre,compra){
-if(confirm("Confirmar venta")){
+if(confirm("¿Confirmar venta?")){
 db.collection("productos").doc(id).get().then(doc=>{
 let d=doc.data();
 
@@ -211,9 +243,7 @@ fecha:Date.now(),
 nombre
 });
 
-if(confirm("¿Generar comprobante?")){
-generarPDF(nombre,venta);
-}
+mostrarTicket(nombre,venta);
 
 cargar();
 }
@@ -221,17 +251,35 @@ cargar();
 }
 }
 
-function generarPDF(nombre,precio){
+function mostrarTicket(nombre,precio){
+let fecha=new Date().toLocaleString();
+
+ticketData={nombre,precio,fecha};
+
+ticketContenido.innerHTML=`
+======== MILO STORE ========<br><br>
+Fecha: ${fecha}<br><br>
+Producto: ${nombre}<br>
+Cantidad: 1<br>
+Precio: S/ ${precio}<br>
+---------------------------<br>
+TOTAL: S/ ${precio}<br>
+---------------------------<br>
+Estado: PAGADO
+`;
+
+ticket.style.display="block";
+}
+
+function cerrarTicket(){
+ticket.style.display="none";
+}
+
+function descargarPDF(){
 const { jsPDF } = window.jspdf;
 let doc=new jsPDF();
-
 doc.setFont("courier");
-doc.text("====== MILO STORE ======",10,10);
-doc.text("Producto: "+nombre,10,30);
-doc.text("Precio: S/ "+precio,10,40);
-doc.text("TOTAL: S/ "+precio,10,60);
-doc.text("Estado: PAGADO",10,80);
-
+doc.text(ticketContenido.innerText,10,10);
 doc.save("comprobante.pdf");
 }
 
@@ -248,7 +296,6 @@ tabla.innerHTML+=`
 <img src="${d.imagen||''}">
 <b>${d.nombre}</b><br>
 Stock: ${d.cantidad}<br>
-
 <button onclick="aumentarStock('${doc.id}')">➕</button>
 <button onclick="eliminar('${doc.id}')">❌</button>
 </div>`;
@@ -268,30 +315,46 @@ calcular();
 
 function calcular(){
 db.collection("movimientos").where("userId","==",userId).get().then(snap=>{
-let v=0,gan=0,hoy=0,mes=0;
-let now=new Date();
+let ventasTotal=0;
+let gastosTotal=0;
+let gananciaTotal=0;
 
 snap.forEach(doc=>{
 let d=doc.data();
-let f=new Date(d.fecha);
 
 if(d.tipo=="venta"){
-v+=Number(d.monto)||0;
-gan+=Number(d.ganancia)||0;
-
-if(f.toDateString()==now.toDateString()){
-hoy+=d.ganancia||0;
-}
-if(f.getMonth()==now.getMonth()){
-mes+=d.ganancia||0;
-}
+ventasTotal+=Number(d.monto)||0;
+gananciaTotal+=Number(d.ganancia)||0;
+}else{
+gastosTotal+=Number(d.monto)||0;
 }
 });
 
-ventas.innerText=v;
-ganancia.innerText=gan;
-gananciaHoy.innerText=hoy;
-gananciaMes.innerText=mes;
+ventas.innerText=ventasTotal;
+gastos.innerText=gastosTotal;
+ganancia.innerText=gananciaTotal;
+});
+}
+
+function filtrar(){
+let t=buscar.value.toLowerCase();
+
+db.collection("productos").where("userId","==",userId).get().then(snap=>{
+productosVenta.innerHTML="";
+
+snap.forEach(doc=>{
+let d=doc.data();
+
+if(d.nombre.toLowerCase().includes(t)){
+productosVenta.innerHTML+=`
+<div class="card">
+<img src="${d.imagen||''}">
+<b>${d.nombre}</b><br>
+S/ ${d.venta}<br>
+<button onclick="venderProducto('${doc.id}',${d.venta},'${d.nombre}',${d.compra})">Vender</button>
+</div>`;
+}
+});
 });
 }
 </script>
