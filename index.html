@@ -10,13 +10,10 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-body{
-margin:0;
-font-family:Arial;
-background:#f2f4f7;
-}
+body{margin:0;font-family:Arial;background:#f2f4f7;}
 
 h2{margin:10px;}
 
@@ -38,6 +35,10 @@ color:white;
 font-weight:bold;
 }
 
+button:active{
+transform:scale(0.95);
+}
+
 .grid{
 display:grid;
 grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
@@ -50,6 +51,12 @@ padding:12px;
 border-radius:15px;
 box-shadow:0 4px 10px rgba(0,0,0,0.08);
 text-align:center;
+animation:fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn{
+from{opacity:0;transform:translateY(10px);}
+to{opacity:1;transform:translateY(0);}
 }
 
 img{
@@ -99,21 +106,13 @@ padding-bottom:90px;
 <p>Ventas: <span id="ventas">0</span></p>
 <p>Gastos: <span id="gastos">0</span></p>
 <p>Ganancia: <span id="ganancia">0</span></p>
-
 <canvas id="grafico" height="120"></canvas>
-
 <h3>👑 Creador MILO</h3>
 </div>
 
 <!-- HISTORIAL -->
 <div id="historial" style="display:none;">
 <h2>📜 Historial</h2>
-
-<button onclick="cambiarFiltro('hoy')">Hoy</button>
-<button onclick="cambiarFiltro('semana')">Semana</button>
-<button onclick="cambiarFiltro('mes')">Mes</button>
-<button onclick="cambiarFiltro('todo')">Todo</button>
-
 <div id="listaHistorial"></div>
 </div>
 
@@ -162,9 +161,8 @@ firebase.initializeApp(firebaseConfig);
 const db=firebase.firestore();
 const auth=firebase.auth();
 
-let filtro="todo";
-let chart=null;
 let userId=null;
+let chart=null;
 
 auth.onAuthStateChanged(user=>{
 if(user){
@@ -199,11 +197,6 @@ document.getElementById(s).style.display="none";
 document.getElementById(id).style.display="block";
 }
 
-function cambiarFiltro(f){
-filtro=f;
-cargarHistorial();
-}
-
 async function agregar(){
 let file=imagen.files[0];
 let img="";
@@ -236,11 +229,15 @@ cargar();
 
 function venderProducto(id,venta,nombre,compra){
 if(confirm("¿Confirmar venta?")){
+
 db.collection("productos").doc(id).get().then(doc=>{
 let d=doc.data();
 
 if(d.cantidad>0){
-db.collection("productos").doc(id).update({cantidad:d.cantidad-1});
+
+db.collection("productos").doc(id).update({
+cantidad:d.cantidad-1
+});
 
 db.collection("movimientos").add({
 userId,
@@ -251,10 +248,38 @@ fecha:Date.now(),
 nombre:nombre
 });
 
+if(confirm("¿Desea comprobante?")){
+generarComprobante(nombre,venta);
+}
+
 cargar();
 }
 });
 }
+}
+
+function generarComprobante(nombre,precio){
+const { jsPDF } = window.jspdf;
+let doc = new jsPDF();
+
+let fecha = new Date().toLocaleString();
+
+doc.setFontSize(14);
+doc.text("MILO STORE", 10, 10);
+
+doc.setFontSize(10);
+doc.text("Fecha: " + fecha, 10, 20);
+
+doc.text("Producto: " + nombre, 10, 30);
+doc.text("Cantidad: 1", 10, 40);
+doc.text("Precio: S/ " + precio, 10, 50);
+
+doc.text("Estado: Pagado", 10, 60);
+
+doc.setFontSize(14);
+doc.text("TOTAL: S/ " + precio, 10, 80);
+
+doc.save("comprobante.pdf");
 }
 
 function comprar(id,precio){
@@ -278,13 +303,6 @@ cargar();
 });
 }
 
-function eliminar(id){
-if(confirm("¿Eliminar producto?")){
-db.collection("productos").doc(id).delete();
-cargar();
-}
-}
-
 function cargar(){
 db.collection("productos").where("userId","==",userId).get().then(snap=>{
 tabla.innerHTML="";
@@ -297,9 +315,12 @@ tabla.innerHTML+=`
 <div class="card">
 <img src="${d.imagen||''}">
 <b>${d.nombre}</b><br>
-Stock: ${d.cantidad}<br>
+<span style="color:${d.cantidad<=3?'red':'black'}">
+Stock: ${d.cantidad}
+</span>
+${d.cantidad<=3?'<br>⚠️ Poco stock':''}
+<br>
 <button onclick="comprar('${doc.id}',${d.compra})">+ Stock</button>
-<button onclick="eliminar('${doc.id}')">❌</button>
 </div>`;
 
 productosVenta.innerHTML+=`
@@ -320,24 +341,22 @@ cargarHistorial();
 
 function calcular(){
 db.collection("movimientos").where("userId","==",userId).get().then(snap=>{
-let ventasTotal=0;
-let gastosTotal=0;
-let gananciaTotal=0;
+let v=0,g=0,gan=0;
 
 snap.forEach(doc=>{
 let d=doc.data();
 
 if(d.tipo=="venta"){
-ventasTotal+=Number(d.monto)||0;
-gananciaTotal+=Number(d.ganancia)||0;
-}else if(d.tipo=="gasto"){
-gastosTotal+=Number(d.monto)||0;
+v+=Number(d.monto)||0;
+gan+=Number(d.ganancia)||0;
+}else{
+g+=Number(d.monto)||0;
 }
 });
 
-ventas.innerText=ventasTotal;
-gastos.innerText=gastosTotal;
-ganancia.innerText=gananciaTotal;
+ventas.innerText=v;
+gastos.innerText=g;
+ganancia.innerText=gan;
 });
 }
 
@@ -347,7 +366,6 @@ let datos={};
 
 snap.forEach(doc=>{
 let d=doc.data();
-
 if(d.tipo=="venta"){
 let fecha=new Date(d.fecha).toLocaleDateString();
 datos[fecha]=(datos[fecha]||0)+Number(d.monto||0);
@@ -376,15 +394,9 @@ tension:0.4
 function cargarHistorial(){
 db.collection("movimientos").where("userId","==",userId).get().then(snap=>{
 listaHistorial.innerHTML="";
-let now=Date.now();
 
 snap.forEach(doc=>{
 let d=doc.data();
-let diff=now-(d.fecha||0);
-
-if(filtro=="hoy" && diff>86400000) return;
-if(filtro=="semana" && diff>604800000) return;
-if(filtro=="mes" && diff>2592000000) return;
 
 listaHistorial.innerHTML+=`
 <div class="card">
