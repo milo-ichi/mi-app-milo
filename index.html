@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>MILO APP PRO</title>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -14,41 +13,16 @@
 
 <style>
 body{margin:0;font-family:Arial;background:#f2f4f7;}
-
 h2{margin:10px;}
 
-input{
-padding:10px;
-margin:5px;
-border-radius:10px;
-border:1px solid #ddd;
-width:90%;
-}
+input{padding:10px;margin:5px;border-radius:10px;border:1px solid #ddd;width:90%;}
+button{padding:10px;margin:5px;border:none;border-radius:10px;background:#2ecc71;color:white;font-weight:bold;}
+button:active{transform:scale(0.95);}
 
-button{
-padding:10px;
-margin:5px;
-border:none;
-border-radius:10px;
-background:#2ecc71;
-color:white;
-font-weight:bold;
-}
-
-button:active{
-transform:scale(0.95);
-}
-
-.grid{
-display:grid;
-grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
-gap:12px;
-}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;}
 
 .card{
-background:white;
-padding:12px;
-border-radius:15px;
+background:white;padding:12px;border-radius:15px;
 box-shadow:0 4px 10px rgba(0,0,0,0.08);
 text-align:center;
 animation:fadeIn 0.3s ease;
@@ -59,29 +33,24 @@ from{opacity:0;transform:translateY(10px);}
 to{opacity:1;transform:translateY(0);}
 }
 
-img{
-width:80px;
-height:80px;
-border-radius:10px;
+img{width:80px;height:80px;border-radius:10px;}
+
+.bottom-nav{position:fixed;bottom:0;width:100%;display:flex;background:white;border-top:1px solid #ccc;}
+.bottom-nav button{flex:1;background:none;}
+
+.content{padding:15px;padding-bottom:120px;}
+
+#ticket{
+position:fixed;bottom:0;left:0;width:100%;
+background:white;padding:15px;
+border-top:2px solid #2ecc71;
+display:none;
 }
 
-.bottom-nav{
-position:fixed;
-bottom:0;
-width:100%;
-display:flex;
-background:white;
-border-top:1px solid #ccc;
-}
-
-.bottom-nav button{
-flex:1;
-background:none;
-}
-
-.content{
-padding:15px;
-padding-bottom:90px;
+.ticket-box{
+border:1px dashed #000;
+padding:10px;
+font-family:monospace;
 }
 </style>
 </head>
@@ -100,30 +69,25 @@ padding-bottom:90px;
 
 <div id="app" style="display:none;">
 
-<!-- DASHBOARD -->
 <div id="dashboard">
 <h2>📊 Dashboard</h2>
 <p>Ventas: <span id="ventas">0</span></p>
-<p>Gastos: <span id="gastos">0</span></p>
-<p>Ganancia: <span id="ganancia">0</span></p>
+<p>Ganancia Total: <span id="ganancia">0</span></p>
+<p>Ganancia Hoy: <span id="gananciaHoy">0</span></p>
+<p>Ganancia Mes: <span id="gananciaMes">0</span></p>
+
+<p>🔥 Producto Top: <span id="topProducto">-</span></p>
+
 <canvas id="grafico" height="120"></canvas>
 <h3>👑 Creador MILO</h3>
 </div>
 
-<!-- HISTORIAL -->
-<div id="historial" style="display:none;">
-<h2>📜 Historial</h2>
-<div id="listaHistorial"></div>
-</div>
-
-<!-- VENDER -->
 <div id="vender" style="display:none;">
 <h2>💰 Vender</h2>
 <input id="buscar" placeholder="Buscar..." oninput="filtrar()">
 <div class="grid" id="productosVenta"></div>
 </div>
 
-<!-- INVENTARIO -->
 <div id="inventario" style="display:none;">
 <h2>📦 Inventario</h2>
 
@@ -141,11 +105,16 @@ padding-bottom:90px;
 </div>
 </div>
 
+<div id="ticket">
+<div class="ticket-box" id="ticketContenido"></div>
+<button onclick="descargarPDF()">Descargar PDF</button>
+<button onclick="cerrarTicket()">Cerrar</button>
+</div>
+
 <div class="bottom-nav">
 <button onclick="mostrar('dashboard')">📊</button>
 <button onclick="mostrar('vender')">💰</button>
 <button onclick="mostrar('inventario')">📦</button>
-<button onclick="mostrar('historial')">📜</button>
 <button onclick="logout()">🚪</button>
 </div>
 
@@ -157,12 +126,12 @@ projectId:"inventario-6562e"
 };
 
 firebase.initializeApp(firebaseConfig);
-
 const db=firebase.firestore();
 const auth=firebase.auth();
 
 let userId=null;
 let chart=null;
+let ticketData=null;
 
 auth.onAuthStateChanged(user=>{
 if(user){
@@ -173,27 +142,12 @@ cargar();
 }
 });
 
-function login(){
-auth.signInWithEmailAndPassword(email.value,password.value)
-.catch(e=>alert(e.message));
-}
-
-function registrar(){
-auth.createUserWithEmailAndPassword(email.value,password.value)
-.catch(e=>alert(e.message));
-}
-
-function logout(){
-if(confirm("¿Cerrar sesión?")){
-auth.signOut();
-location.reload();
-}
-}
+function login(){auth.signInWithEmailAndPassword(email.value,password.value).catch(e=>alert(e.message));}
+function registrar(){auth.createUserWithEmailAndPassword(email.value,password.value).catch(e=>alert(e.message));}
+function logout(){if(confirm("¿Cerrar sesión?")){auth.signOut();location.reload();}}
 
 function mostrar(id){
-["dashboard","vender","inventario","historial"].forEach(s=>{
-document.getElementById(s).style.display="none";
-});
+["dashboard","vender","inventario"].forEach(s=>document.getElementById(s).style.display="none");
 document.getElementById(id).style.display="block";
 }
 
@@ -208,8 +162,7 @@ await new Promise(r=>reader.onload=()=>{img=reader.result;r();});
 }
 
 db.collection("productos").add({
-userId,
-nombre:producto.value,
+userId,nombre:producto.value,
 cantidad:Number(cantidad.value)||0,
 compra:Number(compra.value)||0,
 venta:Number(venta.value)||0,
@@ -217,13 +170,7 @@ imagen:img
 });
 
 alert("Producto agregado");
-
-producto.value="";
-cantidad.value="";
-compra.value="";
-venta.value="";
-imagen.value="";
-
+producto.value="";cantidad.value="";compra.value="";venta.value="";imagen.value="";
 cargar();
 }
 
@@ -235,9 +182,7 @@ let d=doc.data();
 
 if(d.cantidad>0){
 
-db.collection("productos").doc(id).update({
-cantidad:d.cantidad-1
-});
+db.collection("productos").doc(id).update({cantidad:d.cantidad-1});
 
 db.collection("movimientos").add({
 userId,
@@ -248,9 +193,7 @@ fecha:Date.now(),
 nombre:nombre
 });
 
-if(confirm("¿Desea comprobante?")){
-generarComprobante(nombre,venta);
-}
+mostrarTicket(nombre,venta);
 
 cargar();
 }
@@ -258,49 +201,38 @@ cargar();
 }
 }
 
-function generarComprobante(nombre,precio){
+function mostrarTicket(nombre,precio){
+let fecha=new Date().toLocaleString();
+
+ticketData={nombre,precio,fecha};
+
+ticketContenido.innerHTML=`
+======== MILO STORE ========<br><br>
+Fecha: ${fecha}<br><br>
+Producto: ${nombre}<br>
+Cantidad: 1<br>
+Precio: S/ ${precio}<br>
+---------------------------<br>
+TOTAL: S/ ${precio}<br>
+---------------------------<br>
+Estado: PAGADO
+`;
+
+ticket.style.display="block";
+}
+
+function cerrarTicket(){
+ticket.style.display="none";
+}
+
+function descargarPDF(){
 const { jsPDF } = window.jspdf;
-let doc = new jsPDF();
+let doc=new jsPDF();
 
-let fecha = new Date().toLocaleString();
-
-doc.setFontSize(14);
-doc.text("MILO STORE", 10, 10);
-
-doc.setFontSize(10);
-doc.text("Fecha: " + fecha, 10, 20);
-
-doc.text("Producto: " + nombre, 10, 30);
-doc.text("Cantidad: 1", 10, 40);
-doc.text("Precio: S/ " + precio, 10, 50);
-
-doc.text("Estado: Pagado", 10, 60);
-
-doc.setFontSize(14);
-doc.text("TOTAL: S/ " + precio, 10, 80);
+doc.setFont("courier");
+doc.text(ticketContenido.innerText,10,10);
 
 doc.save("comprobante.pdf");
-}
-
-function comprar(id,precio){
-let c=Number(prompt("Cantidad"))||0;
-
-db.collection("productos").doc(id).get().then(doc=>{
-let d=doc.data();
-
-db.collection("productos").doc(id).update({
-cantidad:d.cantidad+c
-});
-
-db.collection("movimientos").add({
-userId,
-tipo:"gasto",
-monto:(Number(precio)||0)*c,
-fecha:Date.now()
-});
-
-cargar();
-});
 }
 
 function cargar(){
@@ -319,8 +251,6 @@ tabla.innerHTML+=`
 Stock: ${d.cantidad}
 </span>
 ${d.cantidad<=3?'<br>⚠️ Poco stock':''}
-<br>
-<button onclick="comprar('${doc.id}',${d.compra})">+ Stock</button>
 </div>`;
 
 productosVenta.innerHTML+=`
@@ -328,35 +258,50 @@ productosVenta.innerHTML+=`
 <img src="${d.imagen||''}">
 <b>${d.nombre}</b><br>
 S/ ${d.venta}<br>
-Stock: ${d.cantidad}<br>
 <button onclick="venderProducto('${doc.id}',${d.venta},'${d.nombre}',${d.compra})">Vender</button>
 </div>`;
 });
 
 calcular();
 grafica();
-cargarHistorial();
 });
 }
 
 function calcular(){
 db.collection("movimientos").where("userId","==",userId).get().then(snap=>{
-let v=0,g=0,gan=0;
+let v=0,gan=0;
+let hoy=0,mes=0;
+let conteo={};
+
+let now=new Date();
 
 snap.forEach(doc=>{
 let d=doc.data();
+let fecha=new Date(d.fecha);
 
 if(d.tipo=="venta"){
 v+=Number(d.monto)||0;
 gan+=Number(d.ganancia)||0;
-}else{
-g+=Number(d.monto)||0;
+
+if(fecha.toDateString()==now.toDateString()){
+hoy+=Number(d.ganancia)||0;
+}
+
+if(fecha.getMonth()==now.getMonth()){
+mes+=Number(d.ganancia)||0;
+}
+
+conteo[d.nombre]=(conteo[d.nombre]||0)+1;
 }
 });
 
 ventas.innerText=v;
-gastos.innerText=g;
 ganancia.innerText=gan;
+gananciaHoy.innerText=hoy;
+gananciaMes.innerText=mes;
+
+let top=Object.entries(conteo).sort((a,b)=>b[1]-a[1])[0];
+topProducto.innerText=top?`${top[0]} (${top[1]})`:"-";
 });
 }
 
@@ -372,37 +317,14 @@ datos[fecha]=(datos[fecha]||0)+Number(d.monto||0);
 }
 });
 
-let labels=Object.keys(datos);
-let valores=Object.values(datos);
-
 if(chart) chart.destroy();
 
 chart=new Chart(grafico,{
 type:"line",
 data:{
-labels:labels,
-datasets:[{
-label:"Ventas",
-data:valores,
-tension:0.4
-}]
+labels:Object.keys(datos),
+datasets:[{label:"Ventas",data:Object.values(datos),tension:0.4}]
 }
-});
-});
-}
-
-function cargarHistorial(){
-db.collection("movimientos").where("userId","==",userId).get().then(snap=>{
-listaHistorial.innerHTML="";
-
-snap.forEach(doc=>{
-let d=doc.data();
-
-listaHistorial.innerHTML+=`
-<div class="card">
-<b>${d.nombre||d.tipo}</b><br>
-${d.tipo} - S/ ${d.monto}
-</div>`;
 });
 });
 }
@@ -422,7 +344,6 @@ productosVenta.innerHTML+=`
 <img src="${d.imagen||''}">
 <b>${d.nombre}</b><br>
 S/ ${d.venta}<br>
-Stock: ${d.cantidad}<br>
 <button onclick="venderProducto('${doc.id}',${d.venta},'${d.nombre}',${d.compra})">Vender</button>
 </div>`;
 }
