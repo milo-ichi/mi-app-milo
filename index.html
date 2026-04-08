@@ -12,17 +12,29 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body{margin:0;font-family:Arial;background:#f4f6f9;}
+body{
+margin:0;
+font-family:Arial;
+background:#f2f4f7;
+}
 
-h2{margin:5px;}
+h2{margin:10px;}
 
-input,select{
-padding:10px;margin:5px;border-radius:10px;border:1px solid #ddd;width:90%;
+input{
+padding:10px;
+margin:5px;
+border-radius:10px;
+border:1px solid #ddd;
+width:90%;
 }
 
 button{
-padding:10px;margin:5px;border:none;border-radius:10px;
-background:#2ecc71;color:white;
+padding:10px;
+margin:5px;
+border:none;
+border-radius:10px;
+background:#2ecc71;
+color:white;
 font-weight:bold;
 }
 
@@ -38,19 +50,32 @@ padding:12px;
 border-radius:15px;
 box-shadow:0 4px 10px rgba(0,0,0,0.08);
 text-align:center;
-transition:0.2s;
 }
-.card:hover{transform:scale(1.03);}
 
-img{width:80px;height:80px;border-radius:10px;}
+img{
+width:80px;
+height:80px;
+border-radius:10px;
+}
 
 .bottom-nav{
-position:fixed;bottom:0;width:100%;display:flex;background:white;
+position:fixed;
+bottom:0;
+width:100%;
+display:flex;
+background:white;
 border-top:1px solid #ccc;
 }
-.bottom-nav button{flex:1;background:none;}
 
-.content{padding:15px;padding-bottom:90px;}
+.bottom-nav button{
+flex:1;
+background:none;
+}
+
+.content{
+padding:15px;
+padding-bottom:90px;
+}
 </style>
 </head>
 
@@ -59,7 +84,7 @@ border-top:1px solid #ccc;
 <div class="content">
 
 <div id="loginDiv">
-<h2>🔐 Login</h2>
+<h2>🔐 Iniciar sesión</h2>
 <input id="email" placeholder="Correo">
 <input id="password" type="password" placeholder="Contraseña">
 <button onclick="login()">Entrar</button>
@@ -80,27 +105,22 @@ border-top:1px solid #ccc;
 <h3>👑 Creador MILO</h3>
 </div>
 
-<!-- CLIENTES -->
-<div id="clientes" style="display:none;">
-<h2>👥 Clientes</h2>
+<!-- HISTORIAL -->
+<div id="historial" style="display:none;">
+<h2>📜 Historial</h2>
 
-<input id="nombreCliente" placeholder="Nombre">
-<input id="deudaCliente" type="number" placeholder="Monto">
-<button onclick="guardarCliente()">Guardar</button>
+<button onclick="cambiarFiltro('hoy')">Hoy</button>
+<button onclick="cambiarFiltro('semana')">Semana</button>
+<button onclick="cambiarFiltro('mes')">Mes</button>
+<button onclick="cambiarFiltro('todo')">Todo</button>
 
-<div id="listaClientes"></div>
+<div id="listaHistorial"></div>
 </div>
 
 <!-- VENDER -->
 <div id="vender" style="display:none;">
 <h2>💰 Vender</h2>
-
-<select id="clienteSelect">
-<option value="">Venta normal</option>
-</select>
-
 <input id="buscar" placeholder="Buscar..." oninput="filtrar()">
-
 <div class="grid" id="productosVenta"></div>
 </div>
 
@@ -126,7 +146,7 @@ border-top:1px solid #ccc;
 <button onclick="mostrar('dashboard')">📊</button>
 <button onclick="mostrar('vender')">💰</button>
 <button onclick="mostrar('inventario')">📦</button>
-<button onclick="mostrar('clientes')">👥</button>
+<button onclick="mostrar('historial')">📜</button>
 <button onclick="logout()">🚪</button>
 </div>
 
@@ -142,6 +162,8 @@ firebase.initializeApp(firebaseConfig);
 const db=firebase.firestore();
 const auth=firebase.auth();
 
+let filtro="todo";
+let chart=null;
 let userId=null;
 
 auth.onAuthStateChanged(user=>{
@@ -150,7 +172,6 @@ userId=user.uid;
 loginDiv.style.display="none";
 app.style.display="block";
 cargar();
-cargarClientes();
 }
 });
 
@@ -165,15 +186,22 @@ auth.createUserWithEmailAndPassword(email.value,password.value)
 }
 
 function logout(){
+if(confirm("¿Cerrar sesión?")){
 auth.signOut();
 location.reload();
 }
+}
 
 function mostrar(id){
-["dashboard","vender","inventario","clientes"].forEach(s=>{
+["dashboard","vender","inventario","historial"].forEach(s=>{
 document.getElementById(s).style.display="none";
 });
 document.getElementById(id).style.display="block";
+}
+
+function cambiarFiltro(f){
+filtro=f;
+cargarHistorial();
 }
 
 async function agregar(){
@@ -195,13 +223,18 @@ venta:Number(venta.value)||0,
 imagen:img
 });
 
-producto.value="";cantidad.value="";compra.value="";venta.value="";
+alert("Producto agregado");
+
+producto.value="";
+cantidad.value="";
+compra.value="";
+venta.value="";
+imagen.value="";
+
 cargar();
 }
 
 function venderProducto(id,venta,nombre,compra){
-let clienteId=clienteSelect.value;
-
 if(confirm("¿Confirmar venta?")){
 db.collection("productos").doc(id).get().then(doc=>{
 let d=doc.data();
@@ -212,24 +245,43 @@ db.collection("productos").doc(id).update({cantidad:d.cantidad-1});
 db.collection("movimientos").add({
 userId,
 tipo:"venta",
-monto:venta,
-ganancia:venta-compra,
+monto:Number(venta)||0,
+ganancia:(Number(venta)||0)-(Number(compra)||0),
 fecha:Date.now(),
-nombre
+nombre:nombre
 });
-
-if(clienteId){
-db.collection("clientes").doc(clienteId).get().then(c=>{
-let deuda=c.data().deuda||0;
-db.collection("clientes").doc(clienteId).update({
-deuda:deuda+venta
-});
-});
-}
 
 cargar();
 }
 });
+}
+}
+
+function comprar(id,precio){
+let c=Number(prompt("Cantidad"))||0;
+
+db.collection("productos").doc(id).get().then(doc=>{
+let d=doc.data();
+
+db.collection("productos").doc(id).update({
+cantidad:d.cantidad+c
+});
+
+db.collection("movimientos").add({
+userId,
+tipo:"gasto",
+monto:(Number(precio)||0)*c,
+fecha:Date.now()
+});
+
+cargar();
+});
+}
+
+function eliminar(id){
+if(confirm("¿Eliminar producto?")){
+db.collection("productos").doc(id).delete();
+cargar();
 }
 }
 
@@ -255,65 +307,115 @@ productosVenta.innerHTML+=`
 <img src="${d.imagen||''}">
 <b>${d.nombre}</b><br>
 S/ ${d.venta}<br>
+Stock: ${d.cantidad}<br>
 <button onclick="venderProducto('${doc.id}',${d.venta},'${d.nombre}',${d.compra})">Vender</button>
 </div>`;
 });
 
 calcular();
+grafica();
+cargarHistorial();
 });
 }
 
 function calcular(){
 db.collection("movimientos").where("userId","==",userId).get().then(snap=>{
-let v=0,g=0,gan=0;
-
-snap.forEach(doc=>{
-let d=doc.data();
-v+=Number(d.monto)||0;
-if(d.tipo=="gasto") g+=Number(d.monto)||0;
-gan+=Number(d.ganancia)||0;
-});
-
-ventas.innerText=v;
-gastos.innerText=g;
-ganancia.innerText=gan;
-});
-}
-
-function guardarCliente(){
-db.collection("clientes").add({
-userId,
-nombre:nombreCliente.value,
-deuda:Number(deudaCliente.value)||0
-});
-cargarClientes();
-}
-
-function cargarClientes(){
-db.collection("clientes").where("userId","==",userId).get().then(snap=>{
-listaClientes.innerHTML="";
-clienteSelect.innerHTML='<option value="">Venta normal</option>';
+let ventasTotal=0;
+let gastosTotal=0;
+let gananciaTotal=0;
 
 snap.forEach(doc=>{
 let d=doc.data();
 
-listaClientes.innerHTML+=`
+if(d.tipo=="venta"){
+ventasTotal+=Number(d.monto)||0;
+gananciaTotal+=Number(d.ganancia)||0;
+}else if(d.tipo=="gasto"){
+gastosTotal+=Number(d.monto)||0;
+}
+});
+
+ventas.innerText=ventasTotal;
+gastos.innerText=gastosTotal;
+ganancia.innerText=gananciaTotal;
+});
+}
+
+function grafica(){
+db.collection("movimientos").where("userId","==",userId).get().then(snap=>{
+let datos={};
+
+snap.forEach(doc=>{
+let d=doc.data();
+
+if(d.tipo=="venta"){
+let fecha=new Date(d.fecha).toLocaleDateString();
+datos[fecha]=(datos[fecha]||0)+Number(d.monto||0);
+}
+});
+
+let labels=Object.keys(datos);
+let valores=Object.values(datos);
+
+if(chart) chart.destroy();
+
+chart=new Chart(grafico,{
+type:"line",
+data:{
+labels:labels,
+datasets:[{
+label:"Ventas",
+data:valores,
+tension:0.4
+}]
+}
+});
+});
+}
+
+function cargarHistorial(){
+db.collection("movimientos").where("userId","==",userId).get().then(snap=>{
+listaHistorial.innerHTML="";
+let now=Date.now();
+
+snap.forEach(doc=>{
+let d=doc.data();
+let diff=now-(d.fecha||0);
+
+if(filtro=="hoy" && diff>86400000) return;
+if(filtro=="semana" && diff>604800000) return;
+if(filtro=="mes" && diff>2592000000) return;
+
+listaHistorial.innerHTML+=`
 <div class="card">
-${d.nombre}<br>
-Debe: ${d.deuda}<br>
-<button onclick="pagar('${doc.id}')">Ya pagó</button>
+<b>${d.nombre||d.tipo}</b><br>
+${d.tipo} - S/ ${d.monto}
 </div>`;
-
-clienteSelect.innerHTML+=`<option value="${doc.id}">${d.nombre}</option>`;
 });
 });
 }
 
-function pagar(id){
-if(confirm("¿Confirmar pago?")){
-db.collection("clientes").doc(id).delete();
-cargarClientes();
+function filtrar(){
+let t=buscar.value.toLowerCase();
+
+db.collection("productos").where("userId","==",userId).get().then(snap=>{
+productosVenta.innerHTML="";
+
+snap.forEach(doc=>{
+let d=doc.data();
+
+if(d.nombre.toLowerCase().includes(t)){
+productosVenta.innerHTML+=`
+<div class="card">
+<img src="${d.imagen||''}">
+<b>${d.nombre}</b><br>
+S/ ${d.venta}<br>
+Stock: ${d.cantidad}<br>
+<button onclick="venderProducto('${doc.id}',${d.venta},'${d.nombre}',${d.compra})">Vender</button>
+</div>`;
 }
+});
+});
 }
 </script>
 
